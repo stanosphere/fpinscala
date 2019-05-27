@@ -182,10 +182,9 @@ object List { // `List` companion object. Contains functions for creating and wo
   def hasSubSequence[A](sup: List[A], sub: List[A]): Boolean = (sup, sub) match {
     case (_, Nil) => true
     case (Nil, _) => false
-    case (Cons(x, xs), Cons(y, ys)) => {
+    case (Cons(x, xs), Cons(y, ys)) =>
       if (x == y) startsWith(xs, ys)
       else hasSubSequence(xs, sub)
-    }
   }
 
   // the fact that my above two functions have the same signature
