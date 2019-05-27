@@ -165,4 +165,30 @@ object List { // `List` companion object. Contains functions for creating and wo
       case (Nil, _) => Nil
       case (Cons(x, xs), Cons(y, ys)) => Cons(f(x, y), zipWith(xs, ys)(f))
     }
+
+  // if we get to the end of the sub sequence then it's a match
+  def startsWith[A](sup: List[A], sub: List[A]): Boolean = (sup, sub) match {
+    case (_, Nil) => true
+    case (Nil, _) => false
+    case (Cons(x, xs), Cons(y, ys)) =>
+      if(x == y) startsWith(xs, ys)
+      else false
+  }
+
+  // the problem I had was that doing hasSubSequence(xs, ys)
+  // was giving me a true for List(1,2,3), List(1,3)
+  // looking at the pattern matching it's kind of obvious why
+  // we were looking for a List(3) inside the remaining list (List(2,3))
+  def hasSubSequence[A](sup: List[A], sub: List[A]): Boolean = (sup, sub) match {
+    case (_, Nil) => true
+    case (Nil, _) => false
+    case (Cons(x, xs), Cons(y, ys)) => {
+      if (x == y) startsWith(xs, ys)
+      else hasSubSequence(xs, sub)
+    }
+  }
+
+  // the fact that my above two functions have the same signature
+  // and that they have the same matching cases suggests that
+  // some abstraction may be useful here???
 }
