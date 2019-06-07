@@ -37,27 +37,70 @@ trait Stream[+A] {
   def take(n: Int): Stream[A] = {
     if (n == 0) Empty
     else this match {
-      case Cons(x, xs) => Cons(x, () => xs().take(n - 1))
+      case Cons(x, xs) => Cons(x, () => xs() take(n - 1))
+      case _ => Empty
+    }
+  }
+
+  // let's try implementing take with the smart constructor
+  def takeWithSmartConstructor(n: Int): Stream[A] = {
+    if (n == 0) Empty
+    else this match {
+      case Cons(x, xs) => Stream.cons(x(), xs() take(n - 1))
+      case _ => Empty
     }
   }
 
   // looks like this isn't tail recursive either so I think my take is fine
   def takeAns(n: Int): Stream[A] = this match {
-    case Cons(h, t) if n > 1 => Cons(h, () => t().takeAns(n - 1))
+    case Cons(h, t) if n > 1 => Cons(h, () => t() takeAns(n - 1))
     case Cons(h, _) if n == 1 => Cons(h, () => Empty)
     case _ => Empty
   }
 
-  def drop(n: Int): Stream[A] = ???
+  // this _is_ tail recursive which is nice!
+  def drop(n: Int): Stream[A] = {
+    if (n == 0) return this
+    else this match {
+      case Cons(_, xs) => xs() drop(n - 1)
+      case _ => Empty
+    }
+  }
 
-  def takeWhile(p: A => Boolean): Stream[A] = ???
+  def takeWhile(p: A => Boolean): Stream[A] = this match {
+    case Cons(h, t) => if (p(h()))
+      Cons(h, () => t() takeWhile p ) else
+      Empty
+    case _ => Empty
+  }
 
-  def forAll(p: A => Boolean): Boolean = ???
+  def takeWhileViaFoldRight(p: A => Boolean): Stream[A] =
+    foldRight(Empty: Stream[A])(
+      (x, acc) =>
+        if(p(x)) Stream.cons(x, acc)
+        else Empty
+    )
 
-  def headOption: Option[A] = ???
+  def forAll(p: A => Boolean): Boolean =
+    foldRight(true)((x, acc) => acc && p(x))
 
-  // 5.7 map, filter, append, flatmap using foldRight. Part of the exercise is
-  // writing your own function signatures.
+  // since (h,_)=>Some(h) never evaluates its second argument, the recursion never occurs
+  def headOption: Option[A] =
+    foldRight(None: Option[A])((h,_) => Some(h))
+
+  def map[B](f: A => B): Stream[B] =
+    foldRight(Empty: Stream[B])((h, t) => Stream.cons(f(h), t))
+
+  def filter(p: A => Boolean): Stream[A] =
+    foldRight(Empty: Stream[A])(
+      (h, t) => if (p(h)) Stream.cons(h, t) else t
+    )
+
+  def append[B>:A](s: => Stream[B]): Stream[B] =
+    foldRight(s)(Stream.cons(_,_))
+
+  def flatMap[B](f: A => Stream[B]): Stream[B] =
+    foldRight(Empty: Stream[B])((x, xs) => f(x) append xs)
 
   def startsWith[B](s: Stream[B]): Boolean = ???
 }
