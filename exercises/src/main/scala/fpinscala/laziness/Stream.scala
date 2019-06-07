@@ -13,7 +13,7 @@ trait Stream[+A] {
       case _ => z
     }
 
-  def exists(p: A => Boolean): Boolean = 
+  def exists(p: A => Boolean): Boolean =
     foldRight(false)((a, b) => p(a) || b) // Here `b` is the unevaluated recursive step that folds the tail of the stream. If `p(a)` returns `true`, `b` will never be evaluated and the computation terminates early.
 
   @annotation.tailrec
@@ -102,6 +102,10 @@ trait Stream[+A] {
   def flatMap[B](f: A => Stream[B]): Stream[B] =
     foldRight(Empty: Stream[B])((x, xs) => f(x) append xs)
 
+  def nth (n: Int): A = this.drop(n-1).take(1) match {
+    case Cons(x,_) => x()
+  }
+
   def startsWith[B](s: Stream[B]): Boolean = ???
 }
 case object Empty extends Stream[Nothing]
@@ -117,12 +121,44 @@ object Stream {
   def empty[A]: Stream[A] = Empty
 
   def apply[A](as: A*): Stream[A] =
-    if (as.isEmpty) empty 
+    if (as.isEmpty) empty
     else cons(as.head, apply(as.tail: _*))
 
   val ones: Stream[Int] = Stream.cons(1, ones)
 
-  def from(n: Int): Stream[Int] = ???
+  def constant[A](a: A): Stream[A] = cons(a, constant(a))
 
-  def unfold[A, S](z: S)(f: S => Option[(A, S)]): Stream[A] = ???
+  def constantAns[A](a: A): Stream[A] = {
+    lazy val tail: Stream[A] = Cons(() => a, () => tail)
+    tail
+  }
+
+  def from(n: Int): Stream[Int] = cons(n, from(n+1))
+
+  val fibs: Stream[BigInt] = {
+    def go(prev: BigInt, curr: BigInt): Stream[BigInt] =
+      cons(curr, go(curr, prev + curr))
+    go(0, 1)
+  }
+
+  def unfold[A, S](z: S)(f: S => Option[(A, S)]): Stream[A] =
+    f(z) match {
+      case Some((x, s)) => cons(x, unfold(s)(f))
+      case None => Empty
+    }
+
+  val onesViaUnfold: Stream[Int] = unfold(1)(_ => Some(1,1))
+
+  def constantViaUnfold[A](a: A): Stream[A] =
+    unfold(a)(_ => Some(a,a))
+
+  def fromViaUnfold(n: Int): Stream[Int] =
+    unfold(n)(s => Some(s + 1, s + 1))
+
+  val fibsViaUnfold: Stream[BigInt] =
+    unfold((0: BigInt,1: BigInt))(s => {
+      val (prev, curr) = s
+      val next = prev + curr
+      Some(curr, (curr, next))
+    })
 }
