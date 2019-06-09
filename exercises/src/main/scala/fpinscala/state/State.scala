@@ -30,7 +30,11 @@ object RNG {
       (f(a), rng2)
     }
 
-  def nonNegativeInt(rng: RNG): (Int, RNG) = ???
+  // Math.abs(Int.MinValue) -> Int.minValue which is -ve!!
+  def nonNegativeInt(rng: RNG): (Int, RNG) = {
+    val (x, gen) = rng.nextInt
+    (math.abs(1 + x), gen)
+  }
 
   def double(rng: RNG): (Double, RNG) = ???
 
