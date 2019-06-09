@@ -43,6 +43,9 @@ object RNG {
     (x.toDouble / Int.MaxValue, gen)
   }
 
+  val doubleViaMap: Rand[Double] =
+    map(nonNegativeInt)(x => x.toDouble / Int.MaxValue)
+
   def intDouble(rng: RNG): ((Int,Double), RNG) = {
     val (myInt, gen) = rng.nextInt
     val (myDouble, gen2) = double(gen)
@@ -73,10 +76,9 @@ object RNG {
   def intsViaUnfoldRight(count: Int)(rng: RNG): (List[Int], RNG) =
     (unfoldRight((rng, count))({
       case (_, 0) => None
-      case (_rng, cnt) => {
+      case (_rng, cnt) =>
         val (x, rngNext) = _rng.nextInt
         Some((x, (rngNext, cnt - 1)))
-      }
     }), rng)
 
   // let's try to be tail recursive af (remember to decrement the count)
@@ -91,9 +93,31 @@ object RNG {
     go(count, Nil, rng)
   }
 
-  def map2[A,B,C](ra: Rand[A], rb: Rand[B])(f: (A, B) => C): Rand[C] = ???
+  def intsViaSequence(count: Int): Rand[List[Int]] =
+    sequence(List.fill(count)(int))
 
-  def sequence[A](fs: List[Rand[A]]): Rand[List[A]] = ???
+  def map2[A,B,C](ra: Rand[A], rb: Rand[B])(f: (A, B) => C): Rand[C] =
+    rng0 => {
+      val (a, rng1) = ra(rng0)
+      val (b, rng2) = rb(rng1)
+      (f(a,b), rng2)
+    }
+
+  //   type Rand[+A] = RNG => (A, RNG)
+  def sequence[A](fs: List[Rand[A]]): Rand[List[A]] =
+    rng0 => fs.foldRight((Nil: List[A], rng0))((randX, acc) => {
+      val (lst, rng1) = acc
+      val (h, rng2) = randX(rng1)
+      (h :: lst, rng2)
+    })
+
+  // this is L33T Af
+  // it's kind of more polymorphic than mine
+  // I'd say the major difference is that they put the desired return type as the zero of the fold
+  // whereas I just kind of artificially wrap stuff in a function lol
+  def sequenceAns[A](fs: List[Rand[A]]): Rand[List[A]] =
+    fs.foldRight(unit(Nil: List[A]))((f, acc) => map2(f, acc)(_ :: _))
+
 
   def flatMap[A,B](f: Rand[A])(g: A => Rand[B]): Rand[B] = ???
 }
