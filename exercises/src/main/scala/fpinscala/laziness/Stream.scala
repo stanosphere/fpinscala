@@ -24,7 +24,7 @@ trait Stream[+A] {
 
   // this is almost correct but it gives us the taken elements in the wrong order!
   def takeAttempt1(n: Int): Stream[A] = {
-    def go[A](i: Int, baseStream: Stream[A], stream: Stream[A]): Stream[A] =
+    def go(i: Int, baseStream: Stream[A], stream: Stream[A]): Stream[A] =
       if(i == n) stream
       else baseStream match {
         case Cons(x, xs) => go(i + 1, xs(), Cons(x, () => stream))
@@ -58,9 +58,16 @@ trait Stream[+A] {
     case _ => Empty
   }
 
+  def takeViaUnfold(n: Int): Stream[A] =
+    Stream.unfold((this, n))({
+      case (_, 0) => None
+      case (Cons(h, t), i) => Some((h(), (t(), i - 1)))
+      case _ => None
+    })
+
   // this _is_ tail recursive which is nice!
   def drop(n: Int): Stream[A] = {
-    if (n == 0) return this
+    if (n == 0) this
     else this match {
       case Cons(_, xs) => xs() drop(n - 1)
       case _ => Empty
@@ -81,6 +88,12 @@ trait Stream[+A] {
         else Empty
     )
 
+  def takeWhileViaUnfold(p: A => Boolean): Stream[A] =
+    Stream.unfold(this)({
+      case Cons(h, t) if p(h()) => Some((h(), t()))
+      case _ => None
+    })
+
   def forAll(p: A => Boolean): Boolean =
     foldRight(true)((x, acc) => acc && p(x))
 
@@ -90,6 +103,12 @@ trait Stream[+A] {
 
   def map[B](f: A => B): Stream[B] =
     foldRight(Empty: Stream[B])((h, t) => Stream.cons(f(h), t))
+
+  def mapViaUnfold[B](f: A => B): Stream[B] =
+    Stream.unfold(this)({
+      case Cons(h, t) => Some((f(h()), t()))
+      case _ => None
+    })
 
   def filter(p: A => Boolean): Stream[A] =
     foldRight(Empty: Stream[A])(
@@ -106,7 +125,47 @@ trait Stream[+A] {
     case Cons(x,_) => x()
   }
 
-  def startsWith[B](s: Stream[B]): Boolean = ???
+  // I did it this way because I forgot the forAll method existed!
+  def startsWith [B>:A](s: Stream[B]): Boolean =
+    Stream.zipAll(this, s).foldRight(true)((x, acc) =>
+    acc && (x match {
+      case (None, _) => false
+      case (_, None) => true
+      case (a,b) => a == b
+    }))
+
+  def startsWithAns[A](s: Stream[A]): Boolean =
+    Stream.zipAll(this, s).takeWhile(_._2 != None) forAll {
+      case (a,b) => a == b
+    }
+
+  def tails: Stream[Stream[A]] =
+    Stream.unfold(this)({
+      case Cons(h,t) => Some((Cons(h,t), t()))
+      case _ => None
+    }).append(Empty)
+
+  def hasSubSequence[A](s: Stream[A]): Boolean =
+    tails exists (_ startsWith s)
+
+  def scanRight[B](z: B)(f: (A, => B) => B): Stream[B] =
+    foldRight(Stream(z))((x, acc) => {
+      lazy val s = acc
+      val Cons(prev, _) = s
+      val next = f(x, prev())
+      Stream(next).append(s)
+    })
+
+  // their fold keeps the value itself as well as the Stream but the Stream only gets evaluated at the end i think
+  // whereas in my answer I was evaluating the head of the stream at each point which is a bit silly if it can be avoided
+  def scanRightAns[B](z: B)(f: (A, => B) => B): Stream[B] =
+    foldRight((z, Stream(z)))((a, p0) => {
+      // p0 is passed by-name and used in by-name args in f and cons. So use lazy val to ensure only one evaluation...
+      lazy val p1 = p0
+      val b2 = f(a, p1._1)
+      (b2, Stream.cons(b2, p1._2))
+    })._2
+
 }
 case object Empty extends Stream[Nothing]
 case class Cons[+A](h: () => A, t: () => Stream[A]) extends Stream[A]
@@ -161,4 +220,31 @@ object Stream {
       val next = prev + curr
       Some(curr, (curr, next))
     })
+
+  def zipWith[A,B,C](as: Stream[A], bs: Stream[B]) (f: (A, B) => C): Stream[C] =
+    unfold((as, bs))({
+      case (_, Empty) => None
+      case (Empty, _) => None
+      case (Cons(a, aas), Cons(b, bbs)) => Some((f(a(),b()), (aas(), bbs())))
+      case _ => None
+    })
+
+  def zipAll[A,B](as: Stream[A], bs: Stream[B]): Stream[(Option[A],Option[B])] =
+    unfold((as, bs))(s => s match {
+      case (Cons(a, aas), Cons(b, bbs)) => {
+        val aa = Some(a())
+        val bb = Some(b())
+        Some((aa, bb), (aas(), bbs()))
+      }
+      case (Cons(a, aas), Empty) => {
+        val aa = Some(a())
+        Some((aa, None), (aas(), Empty))
+      }
+      case (Empty, Cons(b, bbs)) => {
+        val bb = Some(b())
+        Some((None, bb), (Empty, bbs()))
+      }
+      case _ => None
+    })
+
 }
