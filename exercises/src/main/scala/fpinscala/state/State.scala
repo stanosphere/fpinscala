@@ -118,8 +118,31 @@ object RNG {
   def sequenceAns[A](fs: List[Rand[A]]): Rand[List[A]] =
     fs.foldRight(unit(Nil: List[A]))((f, acc) => map2(f, acc)(_ :: _))
 
+  def flatMap[A,B](f: Rand[A])(g: A => Rand[B]): Rand[B] =
+    rng => {
+      val (a, rng2) = f(rng)
+      g(a)(rng2)
+    }
 
-  def flatMap[A,B](f: Rand[A])(g: A => Rand[B]): Rand[B] = ???
+  def mapViaFlatMap[A,B](f: Rand[A])(g: A => B): Rand[B] =
+    flatMap(f)(x => unit(g(x)))
+
+  def map2ViaFlatMap[A,B,C](ra: Rand[A], rb: Rand[B])(g: (A,B) => C): Rand[C] =
+    flatMap(ra)(x => map(rb)(y => g(x,y)))
+
+  def nonNegativeLessThan(n: Int): Rand[Int] =
+    flatMap(nonNegativeInt)(x =>
+      if (x < n) unit(x)
+      else {
+        val y = x.toDouble * n.toDouble / Int.MaxValue.toDouble
+        unit(y.toInt)
+      }
+    )
+
+  def rollDie: Rand[Int] = map(nonNegativeLessThan(6))(_ + 1)
+
+  def rollDieNTimes(n: Int): Rand[List[Int]] =
+    sequence(List.fill(n)(rollDie))
 }
 
 case class State[S,+A](run: S => (A, S)) {
