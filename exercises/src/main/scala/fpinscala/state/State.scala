@@ -191,7 +191,7 @@ object State {
       _ <- set(f(s))
     } yield ()
 
-  def updateCandyMachine = ( machineState: Machine, input: Input) =>
+  def updateCandyMachine = (machineState: Machine, input: Input) =>
     (input, machineState) match {
       case (_, Machine(_, 0, _)) => machineState // no candy so nothing happens
       case (Coin, Machine(false,_,_)) => machineState // unlocked so putting a coin in does nothing
