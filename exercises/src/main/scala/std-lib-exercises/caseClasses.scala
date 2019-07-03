@@ -25,8 +25,7 @@ object TermTest {
   }
   val id = Fun("x", Var("x"))
   val t = Fun("x", Fun("y", App(Var("x"), Var("y"))))
-  printTerm(t)
-  println
-  println(isIdentityFun(id))
-  println(isIdentityFun(t))
 }
+
+case class Person(first: String, last: String)
+
