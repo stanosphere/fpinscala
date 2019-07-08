@@ -59,7 +59,7 @@ object Par {
   }
 }
 
-object Examples {
+object Example {
   import Par._
   def sum(ints: IndexedSeq[Int]): Int = // `IndexedSeq` is a superclass of random-access sequences like `Vector` in the standard library. Unlike lists, these sequences provide an efficient `splitAt` method for dividing them into two parts at a particular index.
     if (ints.size <= 1)
