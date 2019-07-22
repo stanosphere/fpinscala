@@ -14,9 +14,7 @@ lazy val root = (project in file("."))
 lazy val exercises = (project in file("exercises"))
   .settings(commonSettings)
   .settings(
-    name := "exercises",
-    scalacOptions += "-Ypartial-unification",
-    libraryDependencies += "org.typelevel" %% "cats-core" % "2.0.0-M1"
+    name := "exercises"
   )
 
 lazy val answers = (project in file("answers"))
@@ -24,5 +22,15 @@ lazy val answers = (project in file("answers"))
   .settings(
     name := "answers"
   )
+
+lazy val catExercises = (project in file("cats-exercises"))
+  .settings(commonSettings)
+  .settings(
+    name := "answers",
+    scalacOptions += "-Ypartial-unification",
+    libraryDependencies += "org.typelevel" %% "cats-core" % "2.0.0-M1"
+  )
+
+
 
 
