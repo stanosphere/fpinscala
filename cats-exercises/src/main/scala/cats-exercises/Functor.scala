@@ -20,8 +20,8 @@ object OhLookSomeFunctors extends App {
     val ints = List(Some(1), None, Some(3))
     println(listOpt.map(ints)(_ + 1))
 
-    val strs = List(Some("Hi"), None, Some("stano"))
-    println(listOpt.map(strs)(_.toUpperCase))
+    val strings = List(Some("Hi"), None, Some("stano"))
+    println(listOpt.map(strings)(_.toUpperCase))
   }
 
   def main(): Unit = {
