@@ -2,23 +2,6 @@ package foldable
 
 import cats.{Foldable, Later, Eval, Monoid, MonoidK}
 
-case class Complex(re: Double, im: Double) {
-  def +(y: Complex): Complex = Complex(re + y.re, im + y.im)
-  def -(y: Complex): Complex = Complex(re - y.re, im - y.im)
-  def *(y: Complex): Complex = Complex(
-    re * y.re - im * y.im,
-    re * y.im + im * y.re
-  )
-  def conjugate(): Complex = Complex(re, -im)
-  def mag(): Double = Math.hypot(re, im)
-
-  implicit def complexMonoid: Monoid[Complex] =
-    new Monoid[Complex] {
-      def combine(x: Complex, y: Complex): Complex = x * y
-      def empty: Complex = Complex(0.0, 0.0)
-    }
-}
-
 object ForAFewFoldablesMore extends App {
 
   val numbers = List(1,2,3,4)
@@ -120,8 +103,9 @@ object ForAFewFoldablesMore extends App {
   def demoComposibility(): Unit = {
     import cats.implicits._
     val g = f.compose[Option]
+    val optionInts = numbers.map(Some(_))
 
-
+    println(g.fold(optionInts))
   }
 
   def main(): Unit = {
@@ -131,6 +115,7 @@ object ForAFewFoldablesMore extends App {
     foldKDemo()
     demoFoldKOption()
     traverseDemo()
+    demoComposibility()
   }
 
   main()
