@@ -3,6 +3,8 @@ package traverse
 import cats.data.{Validated, ValidatedNel}
 import cats.implicits._
 
+import myTree.tree._
+
 // so In Hindley-Milner world I think the signature is something like:
 // traverse :: (Traversable t, Applicative f) => (a -> f b) -> t a -> f (t b)
 // but we can rewrite tjis in scala form as:
@@ -56,9 +58,18 @@ object TheGoodTraverse extends App {
     println(myRes)
   }
 
+  def demoTreeTraversal(): Unit = {
+    val a = Tree.Branch(100, Tree.Leaf(50), Tree.Leaf(50))
+    val b = Tree.Branch(80, Tree.Leaf(30), Tree.Empty[Int])
+    val t = Tree.Branch(180, a, b)
+    println(t)
+    println(t.traverse(x => List(x, x * x)))
+  }
+
   def main(): Unit = {
     demoBasicUsage()
     fAndTAreBothLists()
+    demoTreeTraversal()
   }
 
   main()
