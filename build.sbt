@@ -35,6 +35,14 @@ lazy val catExercises = (project in file("cats-exercises"))
     libraryDependencies += "org.typelevel" %% "cats-core" % "2.0.0-M1"
   )
 
+lazy val experiments = (project in file("experiments"))
+  .settings(catSettings)
+  .settings(
+    name := "experiments",
+    scalacOptions += "-Ypartial-unification",
+    libraryDependencies += "org.typelevel" %% "cats-core" % "2.0.0-M1"
+  )
+
 
 
 
