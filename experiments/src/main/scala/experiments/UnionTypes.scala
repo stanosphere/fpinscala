@@ -4,14 +4,15 @@ package experiments
 
 object UnionTypes extends App {
   type ¬[A] = A => Nothing
-  type ∨[T, U] = ¬[¬[T] with ¬[U]]
   type ¬¬[A] = ¬[¬[A]]
+  type ∨[T, U] = ¬[¬[T] with ¬[U]]
   type |∨|[T, U] = { type λ[X] = ¬¬[X] <:< (T ∨ U) }
 
-  def size[T](t: T)(implicit ev: ¬¬[T] <:< (Int ∨ String)): Int =
+  def size[T](t: T)(implicit ev: ¬¬[T] <:< (Int ∨ (String ∨ Char))): Int =
     t match {
       case i: Int => i
       case s: String => s.length
+      case _: Char => 1
     }
 
   println(size(23))
