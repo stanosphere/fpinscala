@@ -10,3 +10,5 @@ project.vim
 .project
 .classpath
 .metadata/
+experiments/src/main/scala/techtest/*
+

@@ -46,8 +46,11 @@ lazy val experiments = (project in file("experiments"))
       "io.circe" %% "circe-core",
       "io.circe" %% "circe-generic",
       "io.circe" %% "circe-parser"
-    ).map(_ % circeVersion) ++ Seq("org.typelevel" %% "cats-core" % "2.0.0-M1")
-  )
+    ).map(_ % circeVersion) ++
+      Seq("org.typelevel" %% "cats-core" % "2.0.0-M1") ++
+      Seq("com.github.pathikrit" %% "better-files" % "3.8.0" )
+    )
+  
 
 
 
