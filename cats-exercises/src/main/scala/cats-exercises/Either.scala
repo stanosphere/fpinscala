@@ -87,6 +87,10 @@ object EitherIsBae extends App {
     demoBiasedFlatMap()
     demoMagic()
     demoPatternMatchingWithMagic()
+
+    val left: Either[String, Int] = Left("Hello")
+
+    println(left.leftMap(_.reverse))
   }
 
   main()

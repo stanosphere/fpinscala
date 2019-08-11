@@ -1,6 +1,6 @@
-package fpinscala.parallelism
+//package fpinscala.parallelism
 
-import java.util.concurrent._
+import java.util.concurrent.{ExecutorService, Future, TimeUnit, Callable, Executors}
 import language.implicitConversions
 
 object Par {
@@ -31,13 +31,40 @@ object Par {
   
   def fork[A](a: => Par[A]): Par[A] = // This is the simplest and most natural implementation of `fork`, but there are some problems with it--for one, the outer `Callable` will block waiting for the "inner" task to complete. Since this blocking occupies a thread in our thread pool, or whatever resource backs the `ExecutorService`, this implies that we're losing out on some potential parallelism. Essentially, we're using two threads when one should suffice. This is a symptom of a more serious problem with the implementation, and we will discuss this later in the chapter.
     es => es.submit(new Callable[A] { 
-      def call = a(es).get
+      def call: A = a(es).get
     })
 
   def map[A,B](pa: Par[A])(f: A => B): Par[B] = 
     map2(pa, unit(()))((a,_) => f(a))
 
-  def sortPar(parList: Par[List[Int]]) = map(parList)(_.sorted)
+  // so this is an incorrect version (it's backwards) of their basic answer lol
+  def sequence[A](ps: List[Par[A]]): Par[List[A]] =
+    ps.foldLeft(unit(Nil: List[A]))((acc, p) => map2(p, acc)(_::_))
+
+  def sequenceRight[A](as: List[Par[A]]): Par[List[A]] =
+    as match {
+      case Nil => unit(Nil)
+      case h :: t => map2(h, fork(sequenceRight(t)))(_ :: _)
+    }
+
+  def parMap[A,B](ps: List[A])(f: A => B): Par[List[B]] = fork {
+    val fbs: List[Par[B]] = ps.map(asyncF(f))
+    sequenceRight(fbs)
+  }
+
+  // so I'm being a bit naughty y with this one by using filter and map
+  // iterating twice is a bad boy manouver
+  def parFilter[A](as: List[A])(f: A => Boolean): Par[List[A]] = fork {
+    val survivors: List[Par[A]] = as filter f map unit
+    sequenceRight(survivors)
+  }
+
+  def parFilterViaFoldRight[A](as: List[A])(f: A => Boolean): Par[List[A]] = fork {
+    sequenceRight(as.foldRight(Nil: List[Par[A]])((a, list) => if (f(a)) unit(a) :: list else list))
+  }
+
+  def sortPar(parList: Par[List[Int]]): Par[List[Int]] =
+    map(parList)(_.sorted)
 
   def equal[A](e: ExecutorService)(p: Par[A], p2: Par[A]): Boolean = 
     p(e).get == p2(e).get
@@ -50,6 +77,30 @@ object Par {
       if (run(es)(cond).get) t(es) // Notice we are blocking on the result of `cond`.
       else f(es)
 
+  def choiceN[A](n: Par[Int])(choices: List[Par[A]]): Par[A] =
+    es => {
+      val index = run(es)(n).get
+      val myChoice = choices(index)
+      run(es)(myChoice)
+    }
+
+  def choiceViaChoiceN[A](cond: Par[Boolean])(t: Par[A], f: Par[A]): Par[A] =
+    choiceN(map(cond)(x => if (x) 0 else 1))(List(t,f))
+
+  def choiceMap[K,V](key: Par[K])(choices: Map[K,Par[V]]): Par[V] =
+    es => {
+      val myKey = run(es)(key).get
+      val myChoice = choices(myKey)
+      run(es)(myChoice)
+    }
+
+  def chooser[A,B](pa: Par[A])(choices: A => Par[B]): Par[B] =
+    es => {
+      val myKey = run(es)(pa).get
+      val myChoice = choices(myKey)
+      run(es)(myChoice)
+    }
+
   /* Gives us infix syntax for `Par`. */
   implicit def toParOps[A](p: Par[A]): ParOps[A] = new ParOps(p)
 
@@ -60,7 +111,12 @@ object Par {
 }
 
 object Example {
+  // remember Par is just an alias for a function that takes an ExecutorService
+  // So I just thought I'd plonk one here so that we can play around a little
+  val myExecutorService: ExecutorService = Executors.newWorkStealingPool
+
   import Par._
+
   def sum(ints: IndexedSeq[Int]): Int = // `IndexedSeq` is a superclass of random-access sequences like `Vector` in the standard library. Unlike lists, these sequences provide an efficient `splitAt` method for dividing them into two parts at a particular index.
     if (ints.size <= 1)
       ints.headOption getOrElse 0 // `headOption` is a method defined on all collections in Scala. We saw this function in chapter 3.
@@ -69,4 +125,24 @@ object Example {
       sum(l) + sum(r) // Recursively sum both halves and add the results together.
     }
 
+  def sumPar(ints: IndexedSeq[Int]): Par[Int] = if (ints.length <= 1)
+    Par.unit(ints.headOption getOrElse 0) else {
+    val (l,r) = ints.splitAt(ints.length / 2)
+    Par.map2(Par.fork(sumPar(l)), Par.fork(sumPar(r)))(_ + _)
+  }
+
+  def foldPar[A](z: A)(f: (A,A) => A)(xs: IndexedSeq[A]): Par[A] = {
+    def foldAndFork(ys: IndexedSeq[A]): Par[A] = Par.fork(foldPar(z)(f)(ys))
+    if (xs.length <= 1) Par.unit(xs.headOption getOrElse z)
+    else {
+      val (l, r) = xs.splitAt(xs.length / 2)
+      Par.map2(foldAndFork(l), foldAndFork(r))(f)
+    }
+  }
+
+  def sumViaFoldPar(ints: IndexedSeq[Int]): Par[Int] =
+    foldPar(0)(_+_)(ints)
+
+  def maxViaFoldPar(ints: IndexedSeq[Int]): Par[Int] =
+    foldPar(Int.MinValue)(_ max _)(ints)
 }
