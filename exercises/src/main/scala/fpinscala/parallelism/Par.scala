@@ -101,6 +101,30 @@ object Par {
       run(es)(myChoice)
     }
 
+  def choiceNViaChooser[A](n: Par[Int])(choices: List[Par[A]]): Par[A] =
+    chooser(n)(index => choices(index))
+
+  def choiceViaChooser[A](cond: Par[Boolean])(t: Par[A], f: Par[A]): Par[A] =
+    chooser(cond)(x => if (x) t else f)
+
+  def flatMap[A,B](p: Par[A])(f: A => Par[B]): Par[B] =
+    chooser(p)(f)
+
+  def join[A](a: Par[Par[A]]): Par[A] =
+    es => {
+      val unwrapped = run(es)(a).get
+      run(es)(unwrapped)
+    }
+
+  def flatMapViaJoin[A,B](p: Par[A])(f: A => Par[B]): Par[B] = {
+    val mapped = map(p)(f)
+    val flattened = join(mapped)
+    flattened
+  }
+
+  def joinViaFlatMap[A](a: Par[Par[A]]): Par[A] =
+    flatMap(a)(identity)
+
   /* Gives us infix syntax for `Par`. */
   implicit def toParOps[A](p: Par[A]): ParOps[A] = new ParOps(p)
 
