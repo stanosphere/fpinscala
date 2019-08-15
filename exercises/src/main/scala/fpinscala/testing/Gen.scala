@@ -32,7 +32,8 @@ object Prop {
 case class Gen[A](sample: State[RNG,A])
 
 object Gen {
-  def unit[A](a: => A): Gen[A] = ???
+  def unit[A](a: => A): Gen[A] =
+    Gen(State(s => (a, s)))
 
   def choose(start: Int, stopExclusive: Int): Gen[Int] =
     Gen(State(RNG.nonNegativeInt).map(n => start + n % (stopExclusive - start)))
