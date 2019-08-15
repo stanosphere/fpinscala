@@ -1,4 +1,4 @@
-//package fpinscala.laziness
+package fpinscala.laziness
 
 trait Stream[+A] {
 

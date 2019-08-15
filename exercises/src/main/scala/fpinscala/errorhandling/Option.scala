@@ -78,7 +78,11 @@ object Option {
     xs.foldRight(Some(Nil): Option[List[A]])((x,y) => map2(x,y)(_ :: _))
 
   def traverse[A,B](xs: List[A])(f: A => Option[B]): Option[List[B]] =
-    xs.foldRight(Some(Nil): Option[List[B]])((x, acc) => acc.map(lst => f(x) :: lst))
+    xs.foldRight(Some(Nil): Option[List[B]])((x, acc) => (acc, f(x)) match {
+      case (None, _) => None
+      case (_, None) => None
+      case (_, Some(value)) => acc.map(lst => value :: lst)
+    })
 
   def traverse_1[A, B](lst: List[A])(f: A => Option[B]): Option[List[B]] =
     lst.foldRight[Option[List[B]]](Some(Nil))((x, xs) => map2(f(x), xs)(_ :: _))

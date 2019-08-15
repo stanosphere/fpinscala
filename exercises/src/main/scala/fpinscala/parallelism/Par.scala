@@ -1,4 +1,4 @@
-//package fpinscala.parallelism
+package fpinscala.parallelism
 
 import java.util.concurrent.{ExecutorService, Future, TimeUnit, Callable, Executors}
 import language.implicitConversions
