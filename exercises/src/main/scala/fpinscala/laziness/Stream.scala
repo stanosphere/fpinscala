@@ -166,6 +166,8 @@ trait Stream[+A] {
       (b2, Stream.cons(b2, p1._2))
     })._2
 
+  def zip[B](bs: Stream[B]): Stream[(A,B)] =
+    Stream.zip(this, bs)
 }
 case object Empty extends Stream[Nothing]
 case class Cons[+A](h: () => A, t: () => Stream[A]) extends Stream[A]
@@ -228,6 +230,9 @@ object Stream {
       case (Cons(a, aas), Cons(b, bbs)) => Some((f(a(),b()), (aas(), bbs())))
       case _ => None
     })
+
+  def zip[A,B](as: Stream[A], bs: Stream[B]): Stream[(A,B)] =
+    zipWith(as, bs)((_,_))
 
   def zipAll[A,B](as: Stream[A], bs: Stream[B]): Stream[(Option[A],Option[B])] =
     unfold((as, bs))(s => s match {
