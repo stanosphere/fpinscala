@@ -1,4 +1,4 @@
-package fpinscala.streamingio
+//package fpinscala.streamingio
 
 import fpinscala.iomonad._
 import language.higherKinds

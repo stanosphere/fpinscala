@@ -17,6 +17,8 @@ object OhLookSomeFunctors extends App {
   def functorCompositionExample(): Unit = {
     val listOpt = Functor[List] compose Functor[Option]
 
+    val y = 1
+    val x = Some(y)
     val ints = List(Some(1), None, Some(3))
     println(listOpt.map(ints)(_ + 1))
 

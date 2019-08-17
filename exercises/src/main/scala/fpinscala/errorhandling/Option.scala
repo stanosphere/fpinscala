@@ -1,8 +1,6 @@
-//package fpinscala.errorhandling
+package fpinscala.errorhandling
 // To get this to work you need to paste it into the repl
 // Use :paste, paste it, and then use ctrl-D to exit paste mode
-
-import scala.{Option => _, Some => _,None => _,  Either => _, _} // hide std library `Option`, `Some` and `Either`, since we are writing our own in this chapter
 
 sealed trait Option[+A] {
   def map[B](f: A => B): Option[B] = this match {

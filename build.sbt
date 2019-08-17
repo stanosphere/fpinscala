@@ -1,10 +1,8 @@
 import sbt.Keys.scalacOptions
 
-val commonSettings = Seq(
-  scalaVersion := "2.12.1"
-)
+scalaVersion := "2.12.8"
 
-val catSettings = Seq(
+val commonSettings = Seq(
   scalaVersion := "2.12.8"
 )
 
@@ -20,17 +18,20 @@ lazy val root = (project in file("."))
 lazy val exercises = (project in file("exercises"))
   .settings(commonSettings)
   .settings(
-    name := "exercises"
+    name := "exercises",
+    scalacOptions in Compile := Seq(
+      "-feature",
+      "-Ypartial-unification",
+      "-language:higherKinds"
+    )
   )
 
 lazy val answers = (project in file("answers"))
   .settings(commonSettings)
-  .settings(
-    name := "answers"
-  )
+  .settings(name := "answers")
 
 lazy val catExercises = (project in file("cats-exercises"))
-  .settings(catSettings)
+  .settings(commonSettings)
   .settings(
     name := "cats-exercises",
     scalacOptions += "-Ypartial-unification",
@@ -38,7 +39,7 @@ lazy val catExercises = (project in file("cats-exercises"))
   )
 
 lazy val experiments = (project in file("experiments"))
-  .settings(catSettings)
+  .settings(commonSettings)
   .settings(
     name := "experiments",
     scalacOptions += "-Ypartial-unification",
