@@ -110,23 +110,27 @@ object Gen {
   def chooseTwoInts(start: Int, stopExclusive: Int): Gen[(Int, Int)] =
     choose(start, stopExclusive).map2(choose(start, stopExclusive))((x,y) => (x,y))
 
+  private def listOfNumbersToString(xs: Gen[List[Int]]): Gen[String] =
+    xs.map(_.map(_.toChar).mkString)
+
   // this will give you all sorts of characters!
   def chooseString(length: Int): Gen[String] =
-    listOfN(length, choose(1,1000))
-      .map(_.map(_.toChar).mkString)
+    listOfNumbersToString(listOfN(length, choose(1,1000)))
 
   /* get an alphanumeric character with equal probability */
+  // note that this is aweful if you want more than about 2000 characters
   def chooseAlphaNumericString(length: Int): Gen[String] = {
     // https://theasciicode.com.ar/
     val numbers = choose(48, 58)
     val lowerCase = choose(65, 91)
-    val upperCase = choose(95, 123)
+    val upperCase = choose(97, 123)
     val choice = generalisedWeighted(List(
       (numbers, 10),
       (lowerCase, 26),
       (upperCase, 26),
     ))
-    choice map (_.toChar.toString)
+
+    listOfNumbersToString(listOfN(length, choice))
   }
 
   def union[A](g1: Gen[A], g2: Gen[A]): Gen[A] =
@@ -150,10 +154,12 @@ object Gen {
     val weights = gs.map(_._2)
     val IntervalAccumulator(intervals, total) = calculateIntervalList(weights)
     val zipped = intervals zip gs
-    val choice = choose(0, total + 1)
+    val choice = choose(0, total)
     val isBetween = (x: Int) => (interval: (Int, Int)) =>
       x >= interval._1 && x < interval._2
-    choice flatMap (x => zipped
+
+    choice flatMap (x =>
+      zipped
       .find(intervalAndGen => isBetween(x)(intervalAndGen._1))
       .get._2._1
     )
