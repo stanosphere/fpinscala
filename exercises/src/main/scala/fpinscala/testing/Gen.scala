@@ -47,17 +47,24 @@ object Prop {
     Prop { (n,rng) => f(n,rng) }
 
   def forAll[A](as: Gen[A])(f: A => Boolean): Prop = Prop {
-    (n,rng) => randomStream(as)(rng).zip(Stream.from(0)).take(n).map {
-      case (a, i) => try {
-        if (f(a)) Passed else Falsified(a.toString, i)
-      } catch { case e: Exception => Falsified(buildMsg(a, e), i) }
-    }.find(_.isFalsified).getOrElse(Passed)
+    (n, rng) => randomStream(as)(rng)
+      .zip(Stream.from(0))
+      .take(n)
+      .map { case (a, i) =>
+        try { if (f(a)) Passed else Falsified(a.toString, i) }
+        catch { case exc: Exception => Falsified(buildMsg(a, exc), i) }
+      }
+      .find(_.isFalsified)
+      .getOrElse(Passed)
   }
 
   def buildMsg[A](s: A, e: Exception): String =
-    s"test case: $s\n" +
-    s"generated an exception: ${e.getMessage}\n" +
-    s"stack trace:\n ${e.getStackTrace.mkString("\n")}"
+    s"""
+      |test case: $s
+      |generated an exception: ${e.getMessage}
+      |stack trace:
+      |${e.getStackTrace.mkString("\n")}
+    """.stripMargin
 }
 
 trait GenTrait[A] {
@@ -108,11 +115,49 @@ object Gen {
     listOfN(length, choose(1,1000))
       .map(_.map(_.toChar).mkString)
 
+  /* get an alphanumeric character with equal probability */
+  def chooseAlphaNumericString(length: Int): Gen[String] = {
+    // https://theasciicode.com.ar/
+    val numbers = choose(48, 58)
+    val lowerCase = choose(65, 91)
+    val upperCase = choose(95, 123)
+    val choice = generalisedWeighted(List(
+      (numbers, 10),
+      (lowerCase, 26),
+      (upperCase, 26),
+    ))
+    choice map (_.toChar.toString)
+  }
+
   def union[A](g1: Gen[A], g2: Gen[A]): Gen[A] =
     boolean.flatMap({
       case true => g1
       case false => g2
     })
+
+  private case class IntervalAccumulator(intervalList: List[(Int, Int)], runningTotal: Int)
+
+  private def calculateIntervalList(xs: List[Int]): IntervalAccumulator =
+    xs.foldLeft(IntervalAccumulator(Nil, 0))(
+      (acc, x) => {
+        val IntervalAccumulator(intervalList, runningTotal) = acc
+        val nextTotal = runningTotal + x
+        IntervalAccumulator(intervalList ++ List((runningTotal, nextTotal)), nextTotal)
+      }
+    )
+
+  def generalisedWeighted[A](gs: List[(Gen[A], Int)]): Gen[A] = {
+    val weights = gs.map(_._2)
+    val IntervalAccumulator(intervals, total) = calculateIntervalList(weights)
+    val zipped = intervals zip gs
+    val choice = choose(0, total + 1)
+    val isBetween = (x: Int) => (interval: (Int, Int)) =>
+      x >= interval._1 && x < interval._2
+    choice flatMap (x => zipped
+      .find(intervalAndGen => isBetween(x)(intervalAndGen._1))
+      .get._2._1
+    )
+  }
 
   def weighted[A](g1: (Gen[A], Int), g2: (Gen[A], Int)): Gen[A] = {
     val (x, y) = (g1._2, g2._2)

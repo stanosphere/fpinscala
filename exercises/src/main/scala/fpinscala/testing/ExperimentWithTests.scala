@@ -52,14 +52,21 @@ object ExperimentWithTests extends App {
     println(reses)
   }
 
+  def checkRandomStream(): Unit = {
+    val randomStream = Prop.randomStream(Gen.chooseString(10))(RNG.Simple(1))
+    val aFewValues = randomStream.take(10).toList
+    println(aFewValues)
+  }
+
   def main(): Unit = {
-    println(getRandomBetween(1,20))
-    checkUnitDoesWhatIThink()
-    checkoutBoolean()
-    listyBoi()
-    twoInts()
-    makeAListOfStrings()
-    tryOutUnion()
+//    println(getRandomBetween(1,20))
+//    checkUnitDoesWhatIThink()
+//    checkoutBoolean()
+//    listyBoi()
+//    twoInts()
+//    makeAListOfStrings()
+//    tryOutUnion()
+    checkRandomStream()
   }
 
   main()
