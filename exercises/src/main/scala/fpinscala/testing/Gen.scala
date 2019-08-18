@@ -13,29 +13,29 @@ The library developed in this chapter goes through several iterations. This file
 shell, which you can fill in and modify while working through the chapter.
 */
 
-case class Prop(run: (TestCases, RNG) => Result) {
+case class Prop(run: (MaxSize, TestCases, RNG) => Result) {
   /* runs the current Prop and then the next one if the first one is cool */
   // no need to add labels to this one since if the first fails the second doesn't even run
-  def &&(p : Prop): Prop = Prop((testCases, rng) => {
-    run(testCases, rng) match {
-      case Passed => p.run(testCases, rng)
-      case Proved => p.run(testCases, rng)
+  def &&(p : Prop): Prop = Prop((max, testCases, rng) => {
+    run(max, testCases, rng) match {
+      case Passed => p.run(max, testCases, rng)
+      case Proved => p.run(max, testCases, rng)
       case x: Falsified => x
     }
   })
 
-  def ||(p : Prop): Prop = Prop((testCases, rng) => {
-    run(testCases, rng) match {
+  def ||(p : Prop): Prop = Prop((max, testCases, rng) => {
+    run(max, testCases, rng) match {
       case Falsified(failureMessageInFirstExecution,_) => p
         .markAsFailed(failureMessageInFirstExecution)
-        .run(testCases, rng)
+        .run(max, testCases, rng)
       case Passed => Passed
       case Proved => Proved
     }
   })
 
-  def markAsFailed(newErrorMessage: String) = Prop((testCases, rng) => {
-    run(testCases, rng) match {
+  def markAsFailed(newErrorMessage: String) = Prop((max, testCases, rng) => {
+    run(max, testCases, rng) match {
       case Falsified(currentError, successes) =>
         Falsified(s"$newErrorMessage\n$currentError", successes)
       case Passed => Passed
@@ -68,7 +68,24 @@ object Prop {
     Stream.unfold(rng)(r => Some(g.sample.run(r)))
 
   def apply(f: (TestCases, RNG) => Result): Prop =
-    Prop { (n,rng) => f(n,rng) }
+    Prop { (_,n,rng) => f(n,rng) }
+
+  def forAll[A](g: SGen[A])(f: A => Boolean): Prop =
+    forAll(g(_))(f)
+
+  def forAll[A](g: Int => Gen[A])(f: A => Boolean): Prop = Prop {
+    (max, n, rng) =>
+      val casesPerSize = (n - 1) / max + 1
+      val propsWithCorrectNumberofCases: Stream[Prop] = Stream
+        .from(0)
+        .take((n min max) + 1)
+        .map(i => forAll(g(i))(f))
+        .map(p => Prop { (max, _, rng) => p.run(max, casesPerSize, rng) })
+      val prop: Prop = propsWithCorrectNumberofCases
+        .toList
+        .reduce(_ && _)
+      prop.run(max, n, rng)
+  }
 
   def forAll[A](as: Gen[A])(f: A => Boolean): Prop = Prop {
     (n, rng) => randomStream(as)(rng)
@@ -89,6 +106,24 @@ object Prop {
       |stack trace:
       |${e.getStackTrace.mkString("\n")}
     """.stripMargin
+
+  def check(p: => Boolean): Prop = Prop { (_, _, _) =>
+    if (p) Passed else Falsified("()", 0)
+  }
+
+  def run(p: Prop,
+          maxSize: Int = 100,
+          testCases: Int = 100,
+          rng: RNG = RNG.Simple(System.currentTimeMillis)
+         ): Unit =
+    p.run(maxSize, testCases, rng) match {
+      case Falsified(msg, n) =>
+        println(s"! Falsified after $n passed tests:\n $msg")
+      case Passed =>
+        println(s"+ OK, passed $testCases tests.")
+      case Proved =>
+        println("OK, proved property.")
+    }
 }
 
 trait GenTrait[+A] {
@@ -114,10 +149,17 @@ case class Gen[+A](sample: State[RNG,A]) extends GenTrait[A] {
   def listOfN(size: Gen[Int]): Gen[List[A]] =
     size.flatMap(n => Gen.listOfN(n, this))
 
+  def listOfN(size: Int): Gen[List[A]] =
+    Gen.listOfN(size, this)
+
   def toGenOption: Gen[Option[A]] =
     Gen(sample.map(Some(_)))
 
   def unsized: SGen[A] = SGen(_ => this)
+
+  // literally just for combining a ppair of generator values
+  def **[B](g: Gen[B]): Gen[(A,B)] =
+    (this map2 g)((a,b) => (a,b))
 }
 
 object Gen {
@@ -199,6 +241,13 @@ object Gen {
     val (gx, gy) = (g1._1, g2._1)
     val total = x + y
     choose(0, total + 1) flatMap (num => if (num < x) gx else gy)
+  }
+
+  // this is the magic that lets us do pattern matching with **
+  // the Some is to indicate that this is a valid way of matching
+  // you can use None to indicate bad ways of matching
+  object ** {
+    def unapply[A,B](p: (A,B)) = Some(p)
   }
 }
 

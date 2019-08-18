@@ -5,8 +5,8 @@ val sortedProp = forAll(listOf(smallInt)) { ns =>
   (nss.isEmpty || nss.tail.isEmpty || !nss.zip(nss.tail).exists {
     case (a,b) => a > b
   })
-    // Also, the sorted list should have all the elements of the input list,
-    && !ns.exists(!nss.contains(_))
-    // and it should have no elements not in the input list.
-    && !nss.exists(!ns.contains(_))
+  // Also, the sorted list should have all the elements of the input list,
+  && !ns.exists(!nss.contains(_))
+  // and it should have no elements not in the input list.
+  && !nss.exists(!ns.contains(_))
 }
