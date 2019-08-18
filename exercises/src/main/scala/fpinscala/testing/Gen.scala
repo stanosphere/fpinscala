@@ -13,11 +13,35 @@ The library developed in this chapter goes through several iterations. This file
 shell, which you can fill in and modify while working through the chapter.
 */
 
-trait Prop {
-  def check: Boolean
-  def &&(p: Prop): Prop = new Prop {
-    def check: Boolean = Prop.this.check && p.check
-  }
+case class Prop(run: (TestCases, RNG) => Result) {
+  /* runs the current Prop and then the next one if the first one is cool */
+  // no need to add labels to this one since if the first fails the second doesn't even run
+  def &&(p : Prop): Prop = Prop((testCases, rng) => {
+    run(testCases, rng) match {
+      case Passed => p.run(testCases, rng)
+      case Proved => p.run(testCases, rng)
+      case x: Falsified => x
+    }
+  })
+
+  def ||(p : Prop): Prop = Prop((testCases, rng) => {
+    run(testCases, rng) match {
+      case Falsified(failureMessageInFirstExecution,_) => p
+        .markAsFailed(failureMessageInFirstExecution)
+        .run(testCases, rng)
+      case Passed => Passed
+      case Proved => Proved
+    }
+  })
+
+  def markAsFailed(newErrorMessage: String) = Prop((testCases, rng) => {
+    run(testCases, rng) match {
+      case Falsified(currentError, successes) =>
+        Falsified(s"$newErrorMessage\n$currentError", successes)
+      case Passed => Passed
+      case Proved => Proved
+    }
+  })
 }
 
 object Prop {
