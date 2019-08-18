@@ -91,12 +91,12 @@ object Prop {
     """.stripMargin
 }
 
-trait GenTrait[A] {
+trait GenTrait[+A] {
   def map[B](f: A => B): Gen[B]
   def flatMap[B](f: A => Gen[B]): Gen[B]
 }
 
-case class Gen[A](sample: State[RNG,A]) extends GenTrait[A] {
+case class Gen[+A](sample: State[RNG,A]) extends GenTrait[A] {
   def map[B](f: A => B): Gen[B] =
     Gen(sample.map(f))
 
@@ -116,6 +116,8 @@ case class Gen[A](sample: State[RNG,A]) extends GenTrait[A] {
 
   def toGenOption: Gen[Option[A]] =
     Gen(sample.map(Some(_)))
+
+  def unsized: SGen[A] = SGen(_ => this)
 }
 
 object Gen {
@@ -130,6 +132,9 @@ object Gen {
 
   def listOfN[A](n: Int, g: Gen[A]): Gen[List[A]] =
     Gen(State.sequence(List.fill(n)(g.sample)))
+
+  def listOf[A](g: Gen[A]): SGen[List[A]] =
+    SGen(listOfN(_, g))
 
   def chooseTwoInts(start: Int, stopExclusive: Int): Gen[(Int, Int)] =
     choose(start, stopExclusive).map2(choose(start, stopExclusive))((x,y) => (x,y))
@@ -195,11 +200,19 @@ object Gen {
     val total = x + y
     choose(0, total + 1) flatMap (num => if (num < x) gx else gy)
   }
-
-
 }
 
-trait SGen[+A] {
+case class SGen[+A](forSize: Int => Gen[A]) {
+  def apply(n: Int): Gen[A] = forSize(n)
 
+  def map[B](f: A => B): SGen[B] = {
+    def g(n: Int): Gen[B] = forSize(n) map f
+    SGen(g)
+  }
+
+  def flatMap[B](f: A => SGen[B]): SGen[B] = {
+    def forFlatMap(n: Int)(a: A): Gen[B] = f(a).forSize(n)
+    def h(n: Int): Gen[B] = forSize(n) flatMap(forFlatMap(n))
+    SGen(h)
+  }
 }
-
