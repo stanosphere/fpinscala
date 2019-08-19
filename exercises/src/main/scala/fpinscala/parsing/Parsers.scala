@@ -4,13 +4,10 @@ import language.higherKinds
 
 trait Parsers[Parser[+_]] { self => // so inner classes may call methods of trait
   def run[A](p: Parser[A])(input: String): Either[ParseError,A]
-
-  def char(c: Char): Parser[Char]
-  def orString(s1: String, s2: String): Parser[String]
-
   def or[A](s1: Parser[A], s2: Parser[A]): Parser[A]
 
-  implicit def string(s: String): Parser[String]
+//  implicit def char(c: Char): Parser[Char]
+//  implicit def string(s: String): Parser[String]
   implicit def operators[A](p: Parser[A]): ParserOps[A] = ParserOps[A](p)
   implicit def asStringParser[A](a: A)(implicit f: A => Parser[String]):
     ParserOps[String] = ParserOps(f(a))
@@ -43,6 +40,9 @@ case class Location(input: String, offset: Int = 0) {
     else ""
 }
 
-case class ParseError(stack: List[(Location,String)] = List(),
-                      otherFailures: List[ParseError] = List()) {
+case class ParseError(
+  stack: List[(Location,String)] = List(),
+  otherFailures: List[ParseError] = List()
+) {
+
 }
