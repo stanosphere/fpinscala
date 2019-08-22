@@ -22,7 +22,8 @@ lazy val exercises = (project in file("exercises"))
     scalacOptions in Compile := Seq(
       "-feature",
       "-Ypartial-unification",
-      "-language:higherKinds"
+      "-language:higherKinds",
+      "-language:implicitConversions"
     )
   )
 
