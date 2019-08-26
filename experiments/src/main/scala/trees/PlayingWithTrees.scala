@@ -6,5 +6,5 @@ object PlayingWithTrees extends App {
   val wheel = Node(1, List(Leaf(19), Leaf(2)))
   println(orphan.map(_ + 1))
   println(wheel.map(square))
-  println(wheel.traverse(square)(_+_))
+  println(wheel.reduce(square)(_+_))
 }

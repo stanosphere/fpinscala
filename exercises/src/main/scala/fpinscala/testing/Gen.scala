@@ -188,6 +188,9 @@ object Gen {
   def chooseString(length: Int): Gen[String] =
     listOfNumbersToString(listOfN(length, choose(1,1000)))
 
+  def chooseString(randomInt: Gen[Int]): Gen[String] =
+    randomInt flatMap chooseString
+
   /* get an alphanumeric character with equal probability */
   // note that this is aweful if you want more than about 2000 characters
   def chooseAlphaNumericString(length: Int): Gen[String] = {
@@ -203,6 +206,9 @@ object Gen {
 
     listOfNumbersToString(listOfN(length, choice))
   }
+
+  def chooseAlphaNumericString(randomInt: Gen[Int]): Gen[String] =
+    randomInt flatMap chooseAlphaNumericString
 
   def union[A](g1: Gen[A], g2: Gen[A]): Gen[A] =
     boolean.flatMap({
