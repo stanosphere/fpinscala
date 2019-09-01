@@ -23,14 +23,14 @@ object PlayingWithMonoids extends App {
     m.op(m.op(a, b), c)
 
   def runWcMonoid(): Unit = {
-    val a: WC = Part("q",16,"HPqur")
-    val b: WC = Stub("ToLKom")
-    val c: WC = Stub("lwjOpD")
+    val a: WC = Part("a",16,"b")
+    val b: WC = Stub("c")
+    val c: WC = Stub("d")
     println(leftFirst(a,b,c)(wcMonoid))
     println(rightFirst(a,b,c)(wcMonoid))
   }
 
-  runFoldMapV()
-  runOrdered()
+//  runFoldMapV()
+//  runOrdered()
   runWcMonoid()
 }

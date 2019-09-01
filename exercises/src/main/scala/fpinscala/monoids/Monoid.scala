@@ -134,7 +134,7 @@ object Monoid {
     def op(wc1: WC, wc2: WC): WC = (wc1, wc2) match {
       case (Stub(x), Stub(y)) => Stub(x + y)
       case (Stub(x), Part(l, cnt, r)) => Part(x + l, cnt, r)
-      case (Part(l, cnt, r), Stub(y)) => Part(l, cnt, y + r)
+      case (Part(l, cnt, r), Stub(y)) => Part(l, cnt, r + y)
       case (Part(l1, cnt1, r1), Part(l2, cnt2, r2)) => {
         val cnt3 = if ((r1 + l2).length == 0) 0 else 1
         Part(l1, cnt1 + cnt2 + cnt3, r2)
