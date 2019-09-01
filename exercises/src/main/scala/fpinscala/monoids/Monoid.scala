@@ -1,7 +1,8 @@
 package fpinscala.monoids
 
-import fpinscala.parallelism.Nonblocking._
-import fpinscala.parallelism.Nonblocking.Par.toParOps // infix syntax for `Par.map`, `Par.flatMap`, etc
+import fpinscala.parallelism.Par
+import fpinscala.parallelism.Par._
+import fpinscala.parallelism.Par.toParOps // infix syntax for `Par.map`, `Par.flatMap`, etc
 import language.higherKinds
 import fpinscala.testing._
 import Prop._
@@ -65,35 +66,82 @@ object Monoid {
 
   def trimMonoid(s: String): Monoid[String] = ???
 
+  // "flips" the Monoid
+  def dual[A](m: Monoid[A]): Monoid[A] = new Monoid[A] {
+    def op(x: A, y: A): A = m.op(y, x)
+    val zero = m.zero
+  }
+
   def concatenate[A](as: List[A], m: Monoid[A]): A =
-    ???
+    as.foldLeft(m.zero)(m.op)
 
   def foldMap[A, B](as: List[A], m: Monoid[B])(f: A => B): B =
-    ???
+    as.foldLeft(m.zero)((acc, a) => m.op(acc, f(a)))
 
-  def foldRight[A, B](as: List[A])(z: B)(f: (A, B) => B): B =
-    ???
+  def foldRight[A, B](as: List[A])(z: B)(f: (A, B) => B): B = {
+    val g: A => (B => B) = x => y => f(x,y)
+    foldMap(as, endoMonoid[B])(g)(z)
+  }
 
-  def foldLeft[A, B](as: List[A])(z: B)(f: (B, A) => B): B =
-    ???
+  def foldLeft[A, B](as: List[A])(z: B)(f: (B, A) => B): B = {
+    val g: A => (B => B) = x => y => f(y,x)
+    foldMap(as, dual(endoMonoid[B]))(g)(z)
+  }
 
   def foldMapV[A, B](as: IndexedSeq[A], m: Monoid[B])(f: A => B): B =
-    ???
+    if (as.size <= 1) {
+      as.headOption map f getOrElse m.zero
+    } else {
+      val (l, r) = as.splitAt(as.length / 2)
+      val g: IndexedSeq[A] => B = xs => foldMapV(xs,m)(f)
+      m.op(g(l), g(r))
+    }
 
-  def ordered(ints: IndexedSeq[Int]): Boolean =
-    ???
+  def par[A](m: Monoid[A]): Monoid[Par[A]] = new Monoid[Par[A]] {
+    def op(x: Par[A], y: Par[A]): Par[A] = Par.map2(x,y)(m.op)
+    val zero: Par[A] = Par.unit(m.zero)
+  }
+
+  def parFoldMap[A,B](v: List[A], m: Monoid[B])(f: A => B): Par[B] =
+    Par
+      .parMap(v)(f) // apply f in parallel
+      .flatMap(bs => foldMap(bs, par(m))(Par.unit)) // perform fold in parallel
+
+  // this one just does positive integers ascending
+  def ordered(ints: List[Int]): Boolean = {
+    case class Tracker(value: Int, isOrdered: Boolean)
+    val notOrdered = Tracker(0, isOrdered = false)
+
+    val orderTrackerMonoid: Monoid[Tracker] = new Monoid[Tracker] {
+      def zero: Tracker = Tracker(0, isOrdered = true)
+      def op(tL: Tracker, tR: Tracker): Tracker = (tL, tR) match {
+        case (Tracker(_, false), _) => notOrdered
+        case (_, Tracker(_, false)) => notOrdered
+        case (Tracker(x,_), Tracker(y, _)) =>
+          if (x < y) Tracker(y, isOrdered = true)
+          else notOrdered
+      }
+    }
+
+    foldMap(ints, orderTrackerMonoid)(Tracker(_, isOrdered = true)).isOrdered
+  }
 
   sealed trait WC
   case class Stub(chars: String) extends WC
   case class Part(lStub: String, words: Int, rStub: String) extends WC
 
-  def par[A](m: Monoid[A]): Monoid[Par[A]] = 
-    ???
-
-  def parFoldMap[A,B](v: IndexedSeq[A], m: Monoid[B])(f: A => B): Par[B] = 
-    ???
-
-//  val wcMonoid: Monoid[WC] = ???
+  val wcMonoid: Monoid[WC] = new Monoid[WC] {
+    def op(wc1: WC, wc2: WC): WC = (wc1, wc2) match {
+      case (Stub(x), Stub(y)) => Stub(x + y)
+      case (Stub(x), Part(l, cnt, r)) => Part(x + l, cnt, r)
+      case (Part(l, cnt, r), Stub(y)) => Part(l, cnt, y + r)
+      case (Part(l1, cnt1, r1), Part(l2, cnt2, r2)) => {
+        val cnt3 = if ((r1 + l2).length == 0) 0 else 1
+        Part(l1, cnt1 + cnt2 + cnt3, r2)
+      }
+    }
+    def zero: WC = Stub("")
+  }
 
   def count(s: String): Int = ???
 
@@ -139,6 +187,23 @@ object MonoidLaws extends App {
   Prop.run(allLaws(
     Monoid.listMonoid[Int],
     Gen.listOfN(10, Gen.choose(1,10))
+  ))
+
+  import Monoid.{Stub, Part}
+
+  val genStub = Gen
+    .chooseAlphaNumericString(Gen.choose(0,10))
+    .map(Stub)
+
+  val genPart =  Gen.map3(
+    Gen.chooseAlphaNumericString(Gen.choose(0,10)),
+    Gen.choose(1, 20),
+    Gen.chooseAlphaNumericString(Gen.choose(0,10))
+  )(Part)
+
+  Prop.run(allLaws(
+    Monoid.wcMonoid,
+    Gen.weighted((genStub, 10), (genPart, 90))
   ))
 }
 

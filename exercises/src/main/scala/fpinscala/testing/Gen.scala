@@ -138,6 +138,9 @@ case class Gen[+A](sample: State[RNG,A]) extends GenTrait[A] {
   def map2[B,C](gb: Gen[B])(f: (A,B) => C) =
     Gen(sample.map2(gb.sample)(f))
 
+  def map3[B,C,D](gb: Gen[B], gc: Gen[C])(f: (A,B,C) => D) =
+    Gen(sample.map3(gb.sample, gc.sample)(f))
+
   def flatMap[B](f: A => Gen[B]): Gen[B] =
     Gen(sample.flatMap(a => f(a).sample))
 
@@ -165,6 +168,9 @@ case class Gen[+A](sample: State[RNG,A]) extends GenTrait[A] {
 object Gen {
   def unit[A](a: => A): Gen[A] =
     Gen(State(s => (a, s)))
+
+  def map3[A1,A2,A3,B](g1: Gen[A1], g2: Gen[A2],g3: Gen[A3])(f: (A1,A2,A3) => B): Gen[B] =
+    g1.map3(g2,g3)(f)
 
   def choose(start: Int, stopExclusive: Int): Gen[Int] =
     Gen(State(RNG.nonNegativeInt).map(n => start + n % (stopExclusive - start)))
