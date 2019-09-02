@@ -175,7 +175,7 @@ object MonoidLaws extends App {
     forAll(gen)((a: A) => m.op(a, m.zero) == a && m.op(m.zero, a) == a)
 
   def allLaws[A](m: Monoid[A], gen: Gen[A]): Prop =
-    identity(m,gen) && associativity(m, gen)
+    identity(m, gen) && associativity(m, gen)
 
   Prop.run(allLaws(
     Monoid.stringMonoid,

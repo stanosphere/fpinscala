@@ -30,7 +30,27 @@ object PlayingWithMonoids extends App {
     println(rightFirst(a,b,c)(wcMonoid))
   }
 
+  def countUsingWCMonoid(s: String): Int = {
+    def charToWC(c: Char): WC =
+      if (c.isWhitespace) Part("", 0, "")
+      else Stub(c.toString)
+
+    def stringToCount(x: String): Int = if (x.length == 0) 0 else 1
+
+    def wcToInt(wc: WC): Int = wc match {
+      case Stub(x) => stringToCount(x)
+      case Part(x, cnt, y) => stringToCount(x) + cnt + stringToCount(y)
+    }
+
+    val characterSequence: IndexedSeq[Char] = s.toIndexedSeq
+
+    val finalWordCount = foldMapV(characterSequence, wcMonoid)(charToWC)
+    println(finalWordCount)
+    wcToInt(finalWordCount)
+  }
+
 //  runFoldMapV()
 //  runOrdered()
   runWcMonoid()
+  countUsingWCMonoid("paul is great and amazing and we love him")
 }
