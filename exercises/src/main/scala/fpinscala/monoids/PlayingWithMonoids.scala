@@ -16,10 +16,10 @@ object PlayingWithMonoids extends App {
     println(ordered(notOrderedList))
   }
 
-  def rightFirst[A](a: A,b: A, c: A)(m: Monoid[A]): A =
+  def rightFirst[A](a: A, b: A, c: A)(m: Monoid[A]): A =
     m.op(a, m.op(b, c))
 
-  def leftFirst[A](a: A,b: A, c: A)(m: Monoid[A]): A =
+  def leftFirst[A](a: A, b: A, c: A)(m: Monoid[A]): A =
     m.op(m.op(a, b), c)
 
   def runWcMonoid(): Unit = {
@@ -35,7 +35,8 @@ object PlayingWithMonoids extends App {
       if (c.isWhitespace) Part("", 0, "")
       else Stub(c.toString)
 
-    def stringToCount(x: String): Int = if (x.length == 0) 0 else 1
+    def stringToCount(x: String): Int =
+      if (x.length == 0) 0 else 1
 
     def wcToInt(wc: WC): Int = wc match {
       case Stub(x) => stringToCount(x)
