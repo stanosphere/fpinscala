@@ -45,6 +45,7 @@ lazy val experiments = (project in file("experiments"))
     name := "experiments",
     scalacOptions += "-Ypartial-unification",
     libraryDependencies += "io.monix" %% "monix" % "2.3.3",
+    libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.14.0",
     libraryDependencies ++= Seq(
       "io.circe" %% "circe-core",
       "io.circe" %% "circe-generic",

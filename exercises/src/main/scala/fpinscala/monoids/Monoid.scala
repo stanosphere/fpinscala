@@ -30,6 +30,11 @@ object Monoid {
     val zero: Int = 0
   }
 
+  val floatAddition: Monoid[Float] = new Monoid[Float] {
+    def op(x: Float, y: Float): Float = x + y
+    val zero: Float = 0
+  }
+
   val intMultiplication: Monoid[Int] = new Monoid[Int] {
     def op(x: Int, y: Int): Int = x * y
     val zero: Int = 1
@@ -145,17 +150,44 @@ object Monoid {
 
   def count(s: String): Int = ???
 
-  def productMonoid[A,B](A: Monoid[A], B: Monoid[B]): Monoid[(A, B)] =
-    ???
+  // it might seem sensible to try to write some monoid that
+  // fuses a pair of monoids
+  // something like:
+  // def fuseMonoids[A,B,C](A: Monoid[A], B: Monoid[B])(f: (A,B) => C): Monoid[C]
+  // but this is impossible because we cannot get the A's and B's back from C's
+  def productMonoid[A,B](A: Monoid[A], B: Monoid[B]): Monoid[(A, B)] = new Monoid[(A,B)] {
+    def op(x: (A,B), y: (A,B)): (A,B)  =
+      (A.op(x._1, y._1), B.op(x._2, y._2))
 
-  def functionMonoid[A,B](B: Monoid[B]): Monoid[A => B] =
-    ???
+    def zero: (A,B) = (A.zero, B.zero)
+  }
 
-  def mapMergeMonoid[K,V](V: Monoid[V]): Monoid[Map[K, V]] =
-    ???
+  def functionMonoid[A,B](B: Monoid[B]): Monoid[A => B] = new Monoid[A => B] {
+    val zero: A => B =
+      _ => B.zero
 
-  def bag[A](as: IndexedSeq[A]): Map[A, Int] =
-    ???
+    def op(f: A => B, g: A => B): A => B =
+      x => B.op(f(x), g(x))
+  }
+
+  def mapMergeMonoid[K,V](V: Monoid[V]): Monoid[Map[K, V]] = new Monoid[Map[K, V]] {
+    def zero: Map[K, V] = Map[K,V]()
+    def op(a: Map[K, V], b: Map[K, V]): Map[K, V] =
+      (a.keySet ++ b.keySet).foldLeft(zero) { (acc,k) =>
+        acc.updated(
+          k,
+          V.op(a.getOrElse(k, V.zero),
+          b.getOrElse(k, V.zero))
+        )
+      }
+  }
+
+  def bag[A](as: IndexedSeq[A]): Map[A, Int] = {
+    val countMonoid: Monoid[Map[A, Int]] = mapMergeMonoid(intAddition)
+    val toMap = (a: A) => Map[A, Int](a -> 1)
+    IndexedSeqFoldable.foldMap(as)(toMap)(countMonoid)
+  }
+
 }
 
 object MonoidLaws extends App {
@@ -210,45 +242,45 @@ object MonoidLaws extends App {
 trait Foldable[F[_]] {
   import Monoid._
 
-  def foldRight[A, B](as: F[A])(z: B)(f: (A, B) => B): B =
-    ???
+  def foldRight[A, B](as: F[A])(z: B)(f: (A, B) => B): B
 
-  def foldLeft[A, B](as: F[A])(z: B)(f: (B, A) => B): B =
-    ???
+  def foldLeft[A, B](as: F[A])(z: B)(f: (B, A) => B): B
 
   def foldMap[A, B](as: F[A])(f: A => B)(mb: Monoid[B]): B =
-    ???
+    foldLeft(as)(mb.zero)((acc, a) => mb.op(acc, f(a)))
 
   def concatenate[A](as: F[A])(m: Monoid[A]): A =
     ???
 
   def toList[A](as: F[A]): List[A] =
-    ???
+    foldRight(as)(Nil: List[A])(_::_)
 }
 
 object ListFoldable extends Foldable[List] {
-  override def foldRight[A, B](as: List[A])(z: B)(f: (A, B) => B) =
-    ???
-  override def foldLeft[A, B](as: List[A])(z: B)(f: (B, A) => B) =
-    ???
-  override def foldMap[A, B](as: List[A])(f: A => B)(mb: Monoid[B]): B =
-    ???
+  def foldRight[A, B](as: List[A])(z: B)(f: (A, B) => B): B =
+    as.foldRight(z)(f)
+
+  def foldLeft[A, B](as: List[A])(z: B)(f: (B, A) => B): B =
+    as.foldLeft(z)(f)
 }
 
 object IndexedSeqFoldable extends Foldable[IndexedSeq] {
-  override def foldRight[A, B](as: IndexedSeq[A])(z: B)(f: (A, B) => B) =
-    ???
-  override def foldLeft[A, B](as: IndexedSeq[A])(z: B)(f: (B, A) => B) =
-    ???
+  def foldRight[A, B](as: IndexedSeq[A])(z: B)(f: (A, B) => B): B =
+    as.foldRight(z)(f)
+
+  def foldLeft[A, B](as: IndexedSeq[A])(z: B)(f: (B, A) => B): B =
+    as.foldLeft(z)(f)
+
   override def foldMap[A, B](as: IndexedSeq[A])(f: A => B)(mb: Monoid[B]): B =
-    ???
+    Monoid.foldMapV(as, mb)(f)
 }
 
 object StreamFoldable extends Foldable[Stream] {
-  override def foldRight[A, B](as: Stream[A])(z: B)(f: (A, B) => B) =
-    ???
-  override def foldLeft[A, B](as: Stream[A])(z: B)(f: (B, A) => B) =
-    ???
+  def foldRight[A, B](as: Stream[A])(z: B)(f: (A, B) => B): B =
+    as.foldRight(z)(f)
+
+  def foldLeft[A, B](as: Stream[A])(z: B)(f: (B, A) => B): B =
+    as.foldLeft(z)(f)
 }
 
 sealed trait Tree[+A]
@@ -256,20 +288,61 @@ case class Leaf[A](value: A) extends Tree[A]
 case class Branch[A](left: Tree[A], right: Tree[A]) extends Tree[A]
 
 object TreeFoldable extends Foldable[Tree] {
+  def foldLeft[A, B](as: Tree[A])(z: B)(f: (B, A) => B): B =
+    as match {
+      case Leaf(value) => f(z, value)
+      case Branch(left, right) => {
+        // fold left side first then use this value as the new zero when folding the right side
+        val zz = foldLeft(left)(z)(f)
+        foldLeft(right)(zz)(f)
+      }
+    }
+
+  def foldRight[A, B](as: Tree[A])(z: B)(f: (A, B) => B): B =
+    as match {
+      case Leaf(value) => f(value, z)
+      case Branch(left, right) => {
+        // fold right side first then use this value as the new zero when folding the left side
+        val zz = foldRight(right)(z)(f)
+        foldRight(left)(zz)(f)
+      }
+    }
+
+  // this provides a much more balanced version of foldMap than having it implemented via foldLeft
   override def foldMap[A, B](as: Tree[A])(f: A => B)(mb: Monoid[B]): B =
-    ???
-  override def foldLeft[A, B](as: Tree[A])(z: B)(f: (B, A) => B) =
-    ???
-  override def foldRight[A, B](as: Tree[A])(z: B)(f: (A, B) => B) =
-    ???
+    as match {
+      case Leaf(a) => f(a)
+      case Branch(left, right) => {
+        val bLeft = foldMap(left)(f)(mb)
+        val bRight = foldMap(right)(f)(mb)
+        mb.op(bLeft, bRight)
+      }
+    }
 }
 
 object OptionFoldable extends Foldable[Option] {
+  def foldLeft[A, B](as: Option[A])(z: B)(f: (B, A) => B): B =
+    as match {
+      case None => z
+      case Some(a) => f(z, a)
+    }
+  def foldRight[A, B](as: Option[A])(z: B)(f: (A, B) => B): B =
+    as match {
+      case None => z
+      case Some(a) => f(a, z)
+    }
+
   override def foldMap[A, B](as: Option[A])(f: A => B)(mb: Monoid[B]): B =
-    ???
-  override def foldLeft[A, B](as: Option[A])(z: B)(f: (B, A) => B) =
-    ???
-  override def foldRight[A, B](as: Option[A])(z: B)(f: (A, B) => B) =
-    ???
+    as match {
+      case None => mb.zero
+      case Some(a) => f(a)
+    }
+
 }
+
+// an interesting observation is that for the option monoid we do not use the mb.op
+// and that for the tree monoid we do not use the mb.zero
+
+// this is because an empty tree does not exist
+// and because an option can contain precisely one value
 

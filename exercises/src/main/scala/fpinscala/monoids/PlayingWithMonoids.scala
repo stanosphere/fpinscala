@@ -50,8 +50,25 @@ object PlayingWithMonoids extends App {
     wcToInt(finalWordCount)
   }
 
+  def checkBagWorks[A](): Unit = {
+    val shaky = IndexedSeq("a", "rose", "is", "a", "rose")
+    val xss = IndexedSeq(List(1,2), List(1,2), List(1,2,3))
+    println(bag(shaky))
+    println(bag(xss))
+  }
+
+  def calcMean(xs: List[Float]): Float = {
+    val m = productMonoid(floatAddition, intAddition)
+    val sumAndCount = ListFoldable.foldMap(xs)(x => (x, 1))(m)
+    val res = sumAndCount._1 / sumAndCount._2
+    println(res)
+    res
+  }
+
 //  runFoldMapV()
 //  runOrdered()
   runWcMonoid()
   countUsingWCMonoid("paul is great and amazing and we love him")
+  checkBagWorks()
+  calcMean(List(1,2,3))
 }

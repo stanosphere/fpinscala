@@ -5,27 +5,9 @@ import parsing._
 import testing._
 import parallelism._
 import state._
-import parallelism.Par._
+import parallelism.Par.{Par, _}
+
 import language.higherKinds
-
-
-trait Functor[F[_]] {
-  def map[A,B](fa: F[A])(f: A => B): F[B]
-
-  def distribute[A,B](fab: F[(A, B)]): (F[A], F[B]) =
-    (map(fab)(_._1), map(fab)(_._2))
-
-  def codistribute[A,B](e: Either[F[A], F[B]]): F[Either[A, B]] = e match {
-    case Left(fa) => map(fa)(Left(_))
-    case Right(fb) => map(fb)(Right(_))
-  }
-}
-
-object Functor {
-  val listFunctor = new Functor[List] {
-    def map[A,B](as: List[A])(f: A => B): List[B] = as map f
-  }
-}
 
 trait Monad[M[_]] extends Functor[M] {
   def unit[A](a: => A): M[A]
@@ -36,11 +18,45 @@ trait Monad[M[_]] extends Functor[M] {
   def map2[A,B,C](ma: M[A], mb: M[B])(f: (A, B) => C): M[C] =
     flatMap(ma)(a => map(mb)(b => f(a, b)))
 
-  def sequence[A](lma: List[M[A]]): M[List[A]] = ???
+  def sequence[A](mas: List[M[A]]): M[List[A]] =
+    traverse(mas)(identity)
 
-  def traverse[A,B](la: List[A])(f: A => M[B]): M[List[B]] = ???
+  // the main logic of this function would probably be simpler to understand in terms of map2
+  def traverse[A,B](as: List[A])(f: A => M[B]): M[List[B]] = {
+    val zero = unit(Nil: List[B])
+    as.foldRight(zero)((a, acc) => {
+      val mb = f(a)
+      flatMap(mb)(b => map(acc)(b :: _))
+    })
+  }
 
-  def replicateM[A](n: Int, ma: M[A]): M[List[A]] = ???
+  def _traverse[A,B](la: List[A])(f: A => M[B]): M[List[B]] = {
+    val zero = unit(Nil: List[B])
+    la.foldRight(zero)((a, mlb) => map2(f(a), mlb)(_ :: _))
+  }
+
+  def replicateM[A](n: Int, ma: M[A]): M[List[A]] =
+    sequence(List.fill(n)(ma))
+
+  // this looks very very similar to my `traverse` function
+  def filterM[A](as: List[A])(f: A => M[Boolean]): M[List[A]] = {
+    val zero = unit(Nil: List[A])
+    as.foldRight(zero)((a, acc) =>
+      flatMap(f(a))(bool => if (bool) map(acc)(a :: _) else acc)
+    )
+  }
+
+  // in the official answer they define it recursively but I'm pretty sure my answer is equivalent
+  // the difference being that I use the foldRight to abstract out the pattern matching and the traversal of the list
+  // whereas here it is done explicitly
+  def _filterM[A](ms: List[A])(f: A => M[Boolean]): M[List[A]] =
+    ms match {
+      case Nil => unit(Nil)
+      case h :: t => flatMap(f(h))(b =>
+        if (!b) _filterM(t)(f)
+        else map(_filterM(t)(f))(h :: _))
+    }
+
 
   def compose[A,B,C](f: A => M[B], g: B => M[C]): A => M[C] = ???
 
@@ -56,27 +72,71 @@ trait Monad[M[_]] extends Functor[M] {
 case class Reader[R, A](run: R => A)
 
 object Monad {
-//  val genMonad = new Monad[Gen] {
-//    def unit[A](a: => A): Gen[A] = Gen.unit(a)
-//    override def flatMap[A,B](ma: Gen[A])(f: A => Gen[B]): Gen[B] =
-//      ma flatMap f
-//  }
+  val genMonad: Monad[Gen] = new Monad[Gen] {
+    def unit[A](a: => A): Gen[A] = Gen.unit(a)
+    override def flatMap[A,B](ma: Gen[A])(f: A => Gen[B]): Gen[B] =
+      ma flatMap f
+  }
 
-  val parMonad: Monad[Par] = ???
+  val parMonad: Monad[Par] = new Monad[Par] {
+    def unit[A](a: => A): Par[A] =
+      Par.unit(a)
 
-  def parserMonad[P[+_]](p: Parsers[P]): Monad[P] = ???
+    override def flatMap[A,B](ma: Par[A])(f: A => Par[B]): Par[B] =
+      ma flatMap f
+  }
 
-  val optionMonad: Monad[Option] = ???
+  def parserMonad[P[+_]](p: Parsers[P]): Monad[P] = new Monad[P] {
+    def unit[A](a: => A): P[A] =
+      p.succeed(a)
 
-  val streamMonad: Monad[Stream] = ???
+    override def flatMap[A,B](ma: P[A])(f: A => P[B]): P[B] =
+      p.flatMap(ma)(f)
+  }
 
-  val listMonad: Monad[List] = ???
+  val optionMonad: Monad[Option] = new Monad[Option] {
+    def unit[A](a: => A): Option[A] =
+      Some(a)
 
-  def stateMonad[S] = ???
+    override def flatMap[A,B](ma: Option[A])(f: A => Option[B]): Option[B] =
+      ma flatMap f
+  }
 
-  val idMonad: Monad[Id] = ???
+  val streamMonad: Monad[Stream] = new Monad[Stream] {
+    def unit[A](a: => A): Stream[A] =
+      Stream(a)
 
-  def readerMonad[R] = ???
+    override def flatMap[A,B](ma: Stream[A])(f: A => Stream[B]): Stream[B] =
+      ma flatMap f
+  }
+
+  val listMonad: Monad[List] = new Monad[List] {
+    def unit[A](a: => A): List[A] =
+      List(a)
+
+    override def flatMap[A,B](ma: List[A])(f: A => List[B]): List[B] =
+      ma flatMap f
+  }
+
+  // this actually produces an infinite family of monads. One for each possible S
+  // there is a way to do this more concisely but I have no idea how lol
+  def stateMonad[S] = {
+    // nothing more than partial application
+    // analogous to if I had a function like f = (x,y) => x + y
+    // I am well with my rights to define g = x => f(x, 12)
+    type ParticularState[A] = State[S,A]
+
+    new Monad[ParticularState] {
+      def unit[A](a: => A): State[S, A] =
+        State unit a
+
+      override def flatMap[A, B](ma: State[S, A])(f: A => State[S, B]): State[S, B] =
+        ma flatMap f
+  }}
+
+//  val idMonad: Monad[Id] = ???
+//
+//  def readerMonad[R] = ???
 }
 
 case class Id[A](value: A) {

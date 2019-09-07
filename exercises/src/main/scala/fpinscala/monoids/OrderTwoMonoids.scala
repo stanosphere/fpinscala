@@ -25,7 +25,7 @@ object OrderTwoMonoids extends App {
   // for `op` follow directly from the identity law
   // and the final case does not involve the identity whatsoever
   // so you just need to check all 8 cases for associativity
-  // so I'm going to check it with my
+  // but I'm also gonna use my property based testing to check
   val nonGroupMonoid: Monoid[TwoThings] = new Monoid[TwoThings] {
     def op(x: TwoThings, y: TwoThings): TwoThings = (x,y) match {
       case (E(), a) => a
@@ -47,3 +47,5 @@ object OrderTwoMonoids extends App {
 
   check()
 }
+
+// I wonder how many order 3 monoids there are
