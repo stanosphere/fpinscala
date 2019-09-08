@@ -162,6 +162,9 @@ object Monoid {
     def zero: (A,B) = (A.zero, B.zero)
   }
 
+  // Actually I think we can have a coproduct monoid!
+  // http://blog.higher-order.com/blog/2014/03/19/monoid-morphisms-products-coproducts/
+
   def functionMonoid[A,B](B: Monoid[B]): Monoid[A => B] = new Monoid[A => B] {
     val zero: A => B =
       _ => B.zero
