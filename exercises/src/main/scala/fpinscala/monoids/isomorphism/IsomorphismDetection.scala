@@ -1,7 +1,7 @@
-package fpinscala.monoids
+package fpinscala.monoids.isomorphism
 
-import Monoid.{booleanAnd, booleanOr}
-import OrderTwoMonoids.nonGroupMonoid
+import fpinscala.monoids.Monoid.{booleanAnd, booleanOr}
+import fpinscala.monoids.OrderTwoMonoids.nonGroupMonoid
 
 // is it possible to check for isomorphism?
 // I happen to know that `booleanAnd`, `booleanOr`, and `nonGroupMonoid`

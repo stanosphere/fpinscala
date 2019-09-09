@@ -30,13 +30,13 @@ object Functor {
 
 // however it appears that scala check has the ability to generate arbitrary types which is kinda cool;
 // need to double check this though!
-object FunctorLaws extends App {
-  def identity[F[_],A](f: Functor[F[A]], gen: Gen[F[A]]): Prop =
-    forAll(gen)((functorInstance: F[A]) => f.map(functorInstance)(a => a) == functorInstance)
-
-  def composition[F[_],A,B,C](f: Functor[F[A]], gen: Gen[F[A]], genFab: Gen[A => B], genFbc: Gen[B => C]): Prop = {
-
-  }
-
-  def allLaws[A](f: Functor[A], gen: Gen[A]): Prop = ???
-}
+//object FunctorLaws extends App {
+//  def identity[F[_],A](f: Functor[F[A]], gen: Gen[F[A]]): Prop =
+//    forAll(gen)((functorInstance: F[A]) => f.map(functorInstance)(a => a) == functorInstance)
+//
+//  def composition[F[_],A,B,C](f: Functor[F[A]], gen: Gen[F[A]], genFab: Gen[A => B], genFbc: Gen[B => C]): Prop = {
+//
+//  }
+//
+//  def allLaws[A](f: Functor[A], gen: Gen[A]): Prop = ???
+//}

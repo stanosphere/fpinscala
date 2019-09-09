@@ -1,11 +1,12 @@
 package fpinscala.monoids
 
 import MonoidLaws.allLaws
+import fpinscala.monoids.OrderTwoMonoids.{A, E, TwoThings}
 import fpinscala.testing.{Gen, Prop}
 
 // I basically just want to figure out if there are one or two of these
 // Are all order 2 monoids isomorphic to one another?
-object OrderTwoMonoids extends App {
+object OrderTwoMonoids {
   trait TwoThings
   case class E() extends TwoThings
   case class A() extends TwoThings
@@ -34,15 +35,17 @@ object OrderTwoMonoids extends App {
     }
     val zero: TwoThings = E()
   }
+}
 
+object VerifyMonoids extends App {
   val gen: Gen[TwoThings] = Gen.weighted(
     Gen.unit(E()) -> 50,
     Gen.unit(A()) -> 50,
   )
 
   def check(): Unit = {
-    Prop.run(allLaws(groupMonoid, gen))
-    Prop.run(allLaws(nonGroupMonoid, gen))
+    Prop.run(allLaws(OrderTwoMonoids.groupMonoid, gen))
+    Prop.run(allLaws(OrderTwoMonoids.nonGroupMonoid, gen))
   }
 
   check()
