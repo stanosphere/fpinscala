@@ -4,15 +4,15 @@ import Monoid._
 
 object PlayingWithMonoids extends App {
   def runFoldMapV(): Unit = {
-    val mySeq = IndexedSeq(1,2,3,4)
+    val mySeq = IndexedSeq(1, 2, 3, 4)
     println(foldMapV(mySeq, intMultiplication)(identity))
     println(foldMapV(mySeq, intAddition)(identity))
   }
 
   def runOrdered(): Unit = {
-    val orderedList = List(1,2,3,4,5)
+    val orderedList = List(1, 2, 3, 4, 5)
     println(ordered(orderedList))
-    val notOrderedList = List(1,3,2,5,4)
+    val notOrderedList = List(1, 3, 2, 5, 4)
     println(ordered(notOrderedList))
   }
 
@@ -23,11 +23,11 @@ object PlayingWithMonoids extends App {
     m.op(m.op(a, b), c)
 
   def runWcMonoid(): Unit = {
-    val a: WC = Part("a",16,"b")
+    val a: WC = Part("a", 16, "b")
     val b: WC = Stub("c")
     val c: WC = Stub("d")
-    println(leftFirst(a,b,c)(wcMonoid))
-    println(rightFirst(a,b,c)(wcMonoid))
+    println(leftFirst(a, b, c)(wcMonoid))
+    println(rightFirst(a, b, c)(wcMonoid))
   }
 
   def countUsingWCMonoid(s: String): Int = {
@@ -52,7 +52,7 @@ object PlayingWithMonoids extends App {
 
   def checkBagWorks[A](): Unit = {
     val shaky = IndexedSeq("a", "rose", "is", "a", "rose")
-    val xss = IndexedSeq(List(1,2), List(1,2), List(1,2,3))
+    val xss = IndexedSeq(List(1, 2), List(1, 2), List(1, 2, 3))
     println(bag(shaky))
     println(bag(xss))
   }
@@ -65,10 +65,24 @@ object PlayingWithMonoids extends App {
     res
   }
 
-//  runFoldMapV()
-//  runOrdered()
+  def whatDoesFunctionMonoidREallyDo(): Unit = {
+    val m = functionMonoid[String, Int](intAddition)
+    println(m.zero("hello"))
+
+    // addition is commutative so f and g will do the same thing
+    val f = m.op(_.length, _.indexOf("a"))
+    val g = m.op(_.indexOf("a"), _.length)
+
+    println(f("no first letter"), g("no first letter"))
+    println(f("cba"), g("cba"))
+
+  }
+
+  //  runFoldMapV()
+  //  runOrdered()
   runWcMonoid()
   countUsingWCMonoid("paul is great and amazing and we love him")
   checkBagWorks()
-  calcMean(List(1,2,3))
+  calcMean(List(1, 2, 3))
+  whatDoesFunctionMonoidREallyDo()
 }

@@ -8,7 +8,7 @@ object FistfulOfMonads extends App {
   def whatDoesReplicateMDo(): Unit = {
     // this will generate several lists of length n
     // where the things in those lists are taken from the values in the monadic list
-    val xss = Monad.listMonad.replicateM(3, List(1,2,3))
+    val xss = Monad.listMonad.replicateM(3, List(1, 2, 3))
     println(xss.length)
     println(xss)
 
@@ -45,7 +45,7 @@ object FistfulOfMonads extends App {
 
   def whatDoesFilterMDo(): Unit = {
     // filterM :: Monad m => [a] -> (a -> m Bool) -> m [a]
-    val xs = List(1,2,3)
+    val xs = List(1, 2, 3)
     val f: Int => List[Boolean] = x => List(x % 2 == 0)
     val g: Int => List[Boolean] = x => List(x % 2 != 0)
     val h: Int => List[Boolean] = x => List(x % 2 == 0, x % 2 != 0)
@@ -63,7 +63,7 @@ object FistfulOfMonads extends App {
     // this allows filtering with the possibility of failure not fucking us up
     // you can just return a None to represent a failure
     val computeOption: (Int => Option[Boolean]) => Option[List[Int]] =
-      Monad.optionMonad.filterM(xs)
+    Monad.optionMonad.filterM(xs)
 
     val f1: Int => Option[Boolean] = x => Some(x % 2 == 0)
     val g1: Int => Option[Boolean] = x => Some(x % 2 != 0)
