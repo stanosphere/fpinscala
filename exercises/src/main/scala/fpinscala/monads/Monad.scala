@@ -25,7 +25,8 @@ trait Monad[M[_]] extends Functor[M] {
 
   // the main logic of this function would probably be simpler to understand in terms of map2
   def traverse[A, B](as: List[A])(f: A => M[B]): M[List[B]] = {
-    val zero = unit(Nil: List[B])
+    val zero: M[List[B]] = unit(Nil)
+
     as.foldRight(zero)((a, acc) => {
       val mb = f(a)
       flatMap(mb)(b => map(acc)(b :: _))
@@ -33,7 +34,8 @@ trait Monad[M[_]] extends Functor[M] {
   }
 
   def _traverse[A, B](la: List[A])(f: A => M[B]): M[List[B]] = {
-    val zero = unit(Nil: List[B])
+    val zero: M[List[B]] = unit(Nil)
+
     la.foldRight(zero)((a, mlb) => map2(f(a), mlb)(_ :: _))
   }
 
@@ -60,10 +62,15 @@ trait Monad[M[_]] extends Functor[M] {
     }
 
 
-  def compose[A, B, C](f: A => M[B], g: B => M[C]): A => M[C] = ???
+  def compose[A, B, C](f: A => M[B], g: B => M[C]): A => M[C] =
+    a => flatMap(f(a))(g)
 
   // Implement in terms of `compose`:
-  def _flatMap[A, B](ma: M[A])(f: A => M[B]): M[B] = ???
+  def _flatMap[A, B](ma: M[A])(f: A => M[B]): M[B] = {
+    val thunk = (_: Unit) => ma
+    val g: Unit => M[B] = compose(thunk, f)
+    g(())
+  }
 
   def join[A](mma: M[M[A]]): M[A] = ???
 
