@@ -138,7 +138,7 @@ object Monad {
   // there is a way to do this more concisely but I have no idea how lol
   def stateMonad[S] = {
     // nothing more than partial application
-    // analogous to if I had a function like f = (x,y) => x + y
+    // analogous to if I had a function like f = (x, y) => x + y
     // I am well with my rights to define g = x => f(x, 12)
     type ParticularState[A] = State[S, A]
 
@@ -151,15 +151,33 @@ object Monad {
     }
   }
 
-  //  val idMonad: Monad[Id] = ???
+  // So actually my above answer was fine and correct
+  // This is just an alternative syntax (I think!!)
+  def stateMonadFromAnswer[S] = new Monad[({type lambda[x] = State[S, x]})#lambda] {
+    def unit[A](a: => A): State[S, A] =
+      State unit a
+
+    override def flatMap[A,B](st: State[S, A])(f: A => State[S, B]): State[S, B] =
+      st flatMap f
+  }
+
+    val idMonad: Monad[Id] = new Monad[Id] {
+      override def unit[A](a: => A): Id[A] =
+        Id(a)
+
+      override def flatMap[A, B](ma: Id[A])(f: A => Id[B]): Id[B] =
+        ma.flatMap(f)
+    }
   //
   //  def readerMonad[R] = ???
 }
 
 case class Id[A](value: A) {
-  def map[B](f: A => B): Id[B] = ???
+  def map[B](f: A => B): Id[B] =
+    Id(f(value))
 
-  def flatMap[B](f: A => Id[B]): Id[B] = ???
+  def flatMap[B](f: A => Id[B]): Id[B] =
+    f(value)
 }
 
 object Reader {
