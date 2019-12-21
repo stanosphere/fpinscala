@@ -77,13 +77,11 @@ object FistfulOfMonads extends App {
   def powerSet[A](as: List[A]): List[List[A]] =
     Monad.listMonad.filterM(as)(_ => List(true, false))
 
-  def main(): Unit = {
-    whatDoesReplicateMDo()
-    println("=====================================================")
-    whatDoesFilterMDo()
-    println("=====================================================")
-    println(powerSet(List("a", "b", "c")))
-  }
+  whatDoesReplicateMDo()
+  println("=====================================================")
+  whatDoesFilterMDo()
+  println("=====================================================")
+  println(powerSet(List("a", "b", "c")))
 
-  main()
+
 }
