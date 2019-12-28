@@ -34,8 +34,11 @@ trait Adjunction[F[_], G[_]] {
   // any adjunction has the property that G[F[_]] is a monad:
   type M[A] = G[F[A]]
 
-  def monadFromAdjunction = new Monad[M] {
-    override def unit[A](a: => A): M[A] = ???
+  def monadUnit[A](a: A): M[A] = unit(a)
+
+  def monadFromAdjunction: Monad[M] = new Monad[M] {
+    override def unit[A](a: => A): M[A] =
+      monadUnit(a)
 
     override def flatMap[A, B](ma: M[A])(f: A => M[B]): M[B] =
       join(map(ma)(f))
