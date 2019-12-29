@@ -92,7 +92,17 @@ trait Applicative[F[_]] extends Functor[F] {
     }
   }
 
-  def compose[G[_]](G: Applicative[G]): Applicative[({type f[x] = F[G[x]]})#f] = ???
+  def compose[G[_]](G: Applicative[G]): Applicative[({type f[x] = F[G[x]]})#f] = {
+    val F = this
+
+    new Applicative[({type f[x] = F[G[x]]})#f] {
+      override def unit[A](a: => A): F[G[A]] = F.unit(G.unit(a))
+
+      override def map2[A, B, C](fga: F[G[A]], fgb: F[G[B]])(f: (A, B) => C): F[G[C]] =
+        F.map2(fga, fgb)((ga, gb) => G.map2(ga, gb)(f))
+    }
+
+  }
 
   def sequenceMap[K, V](ofa: Map[K, F[V]]): F[Map[K, V]] = ???
 }
@@ -109,6 +119,27 @@ trait Monad[F[_]] extends Applicative[F] {
 
   override def apply[A, B](mf: F[A => B])(ma: F[A]): F[B] =
     flatMap(mf)(f => map(ma)(a => f(a)))
+
+  // Just gonna figure out _why_ this can't be done
+  //  def _compose[G[_]](G: Monad[G]): Monad[({type f[x] = F[G[x]]})#f] = {
+  //    val F = this
+  //
+  //    new Monad[({type f[x] = F[G[x]]})#f] {
+  //      override def unit[A](a: => A): F[G[A]] = F.unit(G.unit(a))
+  //
+  //      override def map2[A, B, C](fga: F[G[A]], fgb: F[G[B]])(f: (A, B) => C): F[G[C]] =
+  //        F.map2(fga, fgb)((ga, gb) => G.map2(ga, gb)(f))
+  //
+  //      // the problem is how in the hell to we implement join or flatmap???
+  //      override def join[A](mma: F[G[F[G[A]]]]): F[G[A]] = {
+  //        // I don't think we can join F-G-F-G :(
+  //        // because we can't join F and G
+  //        // now if I could swap F and G around things would be good
+  //        // but I can't so tough
+  //      }
+  //    }
+  //  }
+
 }
 
 object Monad {
