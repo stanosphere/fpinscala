@@ -74,7 +74,23 @@ trait Applicative[F[_]] extends Functor[F] {
 
   def factor[A, B](fa: F[A], fb: F[B]): F[(A, B)] = ???
 
-  def product[G[_]](G: Applicative[G]): Applicative[({type f[x] = (F[x], G[x])})#f] = ???
+  // why do we need the type lambda here but not for Monoids?
+  // Because the type that a monoid takes as a type parameter is not a higher kinded type whereas F and G are
+  // Without this type lambda here, we would have to write a separate product function for each x
+  def product[G[_]](G: Applicative[G]): Applicative[({type f[x] = (F[x], G[x])})#f] = {
+    val F = this
+
+    new Applicative[({type f[x] = (F[x], G[x])})#f] {
+      override def unit[A](a: => A): (F[A], G[A]) =
+        (F unit a, G unit a)
+
+      override def map2[A, B, C](fpga: (F[A], G[A]), fpgb: (F[B], G[B]))(f: (A, B) => C): (F[C], G[C]) = {
+        val (fa, ga) = fpga
+        val (fb, gb) = fpgb
+        (F.map2(fa, fb)(f), G.map2(ga, gb)(f))
+      }
+    }
+  }
 
   def compose[G[_]](G: Applicative[G]): Applicative[({type f[x] = F[G[x]]})#f] = ???
 
@@ -137,7 +153,19 @@ object Applicative {
       (a zip b) map f.tupled
   }
 
-  def validationApplicative[E]: Applicative[({type f[x] = Validation[E, x]})#f] = ???
+  def validationApplicative[E]: Applicative[({type f[x] = Validation[E, x]})#f] =
+    new Applicative[({type f[x] = Validation[E, x]})#f] {
+      override def unit[A](a: => A): Validation[E, A] =
+        Success(a)
+
+      override def map2[A, B, C](fa: Validation[E, A], fb: Validation[E, B])(f: (A, B) => C): Validation[E, C] =
+        (fa, fb) match {
+          case (Success(a), Success(b)) => Success(f(a, b))
+          case (Success(_), Failure(h, t)) => Failure(h, t)
+          case (Failure(h, t), Success(_)) => Failure(h, t)
+          case (Failure(h1, t1), Failure(h2, t2)) => Failure(h1, t1 ++ Vector(h2) ++ t2)
+        }
+    }
 
   type Const[A, B] = A
 
