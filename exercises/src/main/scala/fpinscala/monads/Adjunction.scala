@@ -1,5 +1,7 @@
 package fpinscala.monads
 
+import fpinscala.monads.Adjunction.listId
+
 trait Adjunction[F[_], G[_]] {
   def unit[A](a: A): G[F[A]]
 
@@ -50,4 +52,25 @@ trait Adjunction[F[_], G[_]] {
       G.map(ma)(F.map(_)(f))
   }
 
+}
+
+object Adjunction {
+  // This must be isomorphic to the list monad
+  val listId: Adjunction[List, Id] = new Adjunction[List, Id] {
+    override def unit[A](a: A): Id[List[A]] =
+      Id(List(a))
+
+    override def counit[A](fga: List[Id[A]]): A =
+      fga.head.value
+
+    override def F: Functor[List] = new Functor[List] {
+      override def map[A, B](fa: List[A])(f: A => B): List[B] =
+        fa map f
+    }
+
+    override def G: Functor[Id] = new Functor[Id] {
+      override def map[A, B](fa: Id[A])(f: A => B): Id[B] =
+        Id(f(fa.value))
+    }
+  }
 }
