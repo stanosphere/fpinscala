@@ -3,8 +3,6 @@ package applicative
 
 import monads.{Functor, Id}
 import state._
-import State._
-import StateUtil._
 import monoids._
 
 import language.higherKinds
@@ -119,15 +117,23 @@ trait Applicative[F[_]] extends Functor[F] {
 }
 
 trait Monad[F[_]] extends Applicative[F] {
-  def flatMap[A, B](ma: F[A])(f: A => F[B]): F[B] = join(map(ma)(f))
+  def flatMap[A, B](ma: F[A])(f: A => F[B]): F[B] =
+    join(map(ma)(f))
 
-  def join[A](mma: F[F[A]]): F[A] = flatMap(mma)(ma => ma)
+  def join[A](mma: F[F[A]]): F[A] =
+    flatMap(mma)(ma => ma)
 
   def compose[A, B, C](f: A => F[B], g: B => F[C]): A => F[C] =
     a => flatMap(f(a))(g)
 
   override def apply[A, B](mf: F[A => B])(ma: F[A]): F[B] =
     flatMap(mf)(f => map(ma)(a => f(a)))
+
+  override def map[A,B](m: F[A])(f: A => B): F[B] =
+    flatMap(m)(a => unit(f(a)))
+
+  override def map2[A,B,C](ma: F[A], mb: F[B])(f: (A, B) => C): F[C] =
+    flatMap(ma)(a => map(mb)(b => f(a, b)))
 
   // Just gonna figure out _why_ this can't be done
   //  def _compose[G[_]](G: Monad[G]): Monad[({type f[x] = F[G[x]]})#f] = {

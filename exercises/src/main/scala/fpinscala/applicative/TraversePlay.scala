@@ -44,10 +44,9 @@ object TraversePlay extends App {
     )
   )
 
-  println(anotherTree)
-  println(listTraverse.traverseS[Int, Int, Int](List(1))(x => State.unit(x)).run(1))
-//  println(listTraverse.toList2(List(1)))
+  println(listTraverse.toList2(List(1)))
 
-  //  println(treeTraverse reverse anotherTree)
+  println(anotherTree)
+  println(treeTraverse reverse anotherTree)
 
 }
