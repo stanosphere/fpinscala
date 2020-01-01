@@ -116,6 +116,19 @@ trait Applicative[F[_]] extends Functor[F] {
       )
     })
   }
+
+  object Laws {
+    def identityLaw[A](fa: F[A]): Boolean =
+      apply(unit(identity[A]))(fa) == fa
+
+    def homomorphismLaw[A, B](f: A => B, x: A): Boolean =
+      apply(unit(f))(unit(x)) == unit(f(x))
+
+    def interchangeLaw[A, B](u: F[A => B], y: A): Boolean =
+      apply(u)(unit(y)) == apply(unit((_: A => B) => y))(u)
+
+  }
+
 }
 
 trait Monad[F[_]] extends Applicative[F] {
@@ -178,7 +191,18 @@ object Monad {
   }
 
   def composeM[F[_], N[_]](implicit F: Monad[F], N: Monad[N], T: Traverse[N]):
-  Monad[({type f[x] = F[N[x]]})#f] = ???
+  Monad[({type f[x] = F[N[x]]})#f] = {
+    new Monad[({type f[x] = F[N[x]]})#f] {
+      override def unit[A](a: => A): F[N[A]] = F.unit(N.unit(a))
+
+      override def flatMap[A, B](fna: F[N[A]])(f: A => F[N[B]]): F[N[B]] = {
+        F.flatMap(fna)(na => {
+          val fnnb = T.traverse(na)(f)
+          F.map(fnnb)(N.join)
+        })
+      }
+    }
+  }
 }
 
 sealed trait Validation[+E, +A]
