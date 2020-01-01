@@ -24,7 +24,8 @@ lazy val exercises = (project in file("exercises"))
       "-Ypartial-unification",
       "-language:higherKinds",
       "-language:implicitConversions"
-    )
+    ),
+    libraryDependencies += "com.github.nikita-volkov" % "sext" % "0.2.4"
   )
 
 lazy val answers = (project in file("answers"))
@@ -52,8 +53,8 @@ lazy val experiments = (project in file("experiments"))
       "io.circe" %% "circe-parser"
     ).map(_ % circeVersion) ++
       Seq("org.typelevel" %% "cats-core" % "2.0.0-M1") ++
-      Seq("com.github.pathikrit" %% "better-files" % "3.8.0" )
-    )
+      Seq("com.github.pathikrit" %% "better-files" % "3.8.0")
+  )
   
 
 

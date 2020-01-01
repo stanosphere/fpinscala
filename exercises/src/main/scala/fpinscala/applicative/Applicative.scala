@@ -1,6 +1,8 @@
 package fpinscala
 package applicative
 
+import sext._
+
 import monads.{Functor, Id}
 import state._
 import monoids._
@@ -129,10 +131,10 @@ trait Monad[F[_]] extends Applicative[F] {
   override def apply[A, B](mf: F[A => B])(ma: F[A]): F[B] =
     flatMap(mf)(f => map(ma)(a => f(a)))
 
-  override def map[A,B](m: F[A])(f: A => B): F[B] =
+  override def map[A, B](m: F[A])(f: A => B): F[B] =
     flatMap(m)(a => unit(f(a)))
 
-  override def map2[A,B,C](ma: F[A], mb: F[B])(f: (A, B) => C): F[C] =
+  override def map2[A, B, C](ma: F[A], mb: F[B])(f: (A, B) => C): F[C] =
     flatMap(ma)(a => map(mb)(b => f(a, b)))
 
   // Just gonna figure out _why_ this can't be done
@@ -281,11 +283,6 @@ trait Traverse[F[_]] extends Functor[F] with Foldable[F] {
   override def toList[A](fa: F[A]): List[A] =
     mapAccum(fa, List[A]())((a, s) => ((), a :: s))._2.reverse
 
-  def toList2[A](fa: F[A]): List[A] = traverseS(fa)((a: A) => (for {
-    as <- StateUtil.get[List[A]]
-    _ <- StateUtil.set(a :: as)
-  } yield ())).run(Nil)._2.reverse
-
   def zipWithIndex[A](fa: F[A]): F[(A, Int)] =
     mapAccum(fa, 0)((a, s) => ((a, s), s + 1))._1
 
@@ -297,14 +294,25 @@ trait Traverse[F[_]] extends Functor[F] with Foldable[F] {
     mapAccum(fa, reversedList)((_, as) => (as.head, as.tail))._1
   }
 
-  override def foldLeft[A, B](fa: F[A])(z: B)(f: (B, A) => B): B = ???
+  override def foldLeft[A, B](fa: F[A])(z: B)(f: (B, A) => B): B =
+    mapAccum(fa, z)((a, acc) => ((), f(acc, a)))._2
 
-  override def foldRight[A, B](as: F[A])(z: B)(f: (A, B) => B): B = ???
+  override def foldRight[A, B](as: F[A])(z: B)(f: (A, B) => B): B =
+    mapAccum(as, z)((a, acc) => ((), f(a, acc)))._2
+
 
   def fuse[G[_], H[_], A, B](fa: F[A])(f: A => G[B], g: A => H[B])
-                            (implicit G: Applicative[G], H: Applicative[H]): (G[F[B]], H[F[B]]) = ???
+                            (implicit G: Applicative[G], H: Applicative[H]): (G[F[B]], H[F[B]]) =
+    traverse[({type f[x] = (G[x], H[x])})#f, A, B](fa)(a => (f(a), g(a)))(G product H)
 
-  def compose[G[_]](implicit G: Traverse[G]): Traverse[({type f[x] = F[G[x]]})#f] = ???
+  def compose[F2[_]](implicit F2: Traverse[F2]): Traverse[({type f[x] = F[F2[x]]})#f] = {
+    val F = this
+
+    new Traverse[({type f[x] = F[F2[x]]})#f] {
+      override def traverse[G[_] : Applicative, A, B](fa: F[F2[A]])(f: A => G[B]): G[F[F2[B]]] =
+        F.traverse(fa)(F2.traverse(_)(f))
+    }
+  }
 }
 
 case class Tree[+A](head: A, tail: List[Tree[A]])

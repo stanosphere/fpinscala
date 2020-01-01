@@ -3,7 +3,6 @@ package fpinscala.applicative
 import Traverse.{listTraverse, optionTraverse, treeTraverse}
 import Applicative.{idApp, listApp, optionApp}
 import fpinscala.monads.Id
-import fpinscala.state.State
 
 object TraversePlay extends App {
   // remember we'll need some implicits for the Gs (I think!!!)
@@ -26,6 +25,7 @@ object TraversePlay extends App {
 
   implicit val l: Traverse[List] = listTraverse
   implicit val t: Traverse[Tree] = treeTraverse
+  implicit val o: Traverse[Option] = optionTraverse
 
   println(forAll2(List(1, 2, 3, 4, 5))(_ < 10))
   println(forAll2(List(1, 2, 3, 4, 5))(_ < 5))
@@ -44,9 +44,21 @@ object TraversePlay extends App {
     )
   )
 
-  println(listTraverse.toList2(List(1)))
-
   println(anotherTree)
   println(treeTraverse reverse anotherTree)
+  println(treeTraverse zipWithIndex anotherTree)
+  println(listTraverse.foldLeft(List(1, 2, 3, 4))(0)(_ + _))
+  println(treeTraverse.foldLeft(anotherTree)(0)(_ - _))
+  println(treeTraverse.foldRight(anotherTree)(0)(_ - _))
+
+  val mad = listTraverse.compose[Tree].compose[Option]
+
+  val stuff: List[Tree[Option[Int]]] =
+    List(Tree(None, Nil), Tree(Some(10), List(None, Some(5)).map(leaf)))
+
+  val crazy = mad.traverse(stuff)(x => List(x,x))
+
+  crazy.foreach(println)
+
 
 }
