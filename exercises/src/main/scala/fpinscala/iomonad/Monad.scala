@@ -70,9 +70,9 @@ trait Monad[F[_]] extends Functor[F] {
   // syntax
   implicit def toMonadic[A](a: F[A]): Monadic[F, A] =
     new Monadic[F, A] {
-      val F = Monad.this;
+      val F: Monad[F] = Monad.this
 
-      def get = a
+      def get: F[A] = a
     }
 }
 
@@ -89,9 +89,9 @@ trait Monadic[F[_], A] {
 
   def flatMap[B](f: A => F[B]): F[B] = F.flatMap(a)(f)
 
-  def **[B](b: F[B]) = F.map2(a, b)((_, _))
+  def **[B](b: F[B]): F[(A, B)] = F.map2(a, b)((_, _))
 
-  def *>[B](b: F[B]) = F.map2(a, b)((_, b) => b)
+  def *>[B](b: F[B]): F[B] = F.map2(a, b)((_, b) => b)
 
   def map2[B, C](b: F[B])(f: (A, B) => C): F[C] = F.map2(a, b)(f)
 
@@ -99,8 +99,8 @@ trait Monadic[F[_], A] {
 
   def skip: F[Unit] = F.skip(a)
 
-  def replicateM(n: Int) = F.replicateM(n)(a)
+  def replicateM(n: Int): F[List[A]] = F.replicateM(n)(a)
 
-  def replicateM_(n: Int) = F.replicateM_(n)(a)
+  def replicateM_(n: Int): F[Unit] = F.replicateM_(n)(a)
 }
 

@@ -119,7 +119,7 @@ trait Applicative[F[_]] extends Functor[F] {
 
   object Laws {
     def identityLaw[A](fa: F[A]): Boolean =
-      apply(unit(identity[A]))(fa) == fa
+      apply(unit((x: A) => x))(fa) == fa
 
     def homomorphismLaw[A, B](f: A => B, x: A): Boolean =
       apply(unit(f))(unit(x)) == unit(f(x))

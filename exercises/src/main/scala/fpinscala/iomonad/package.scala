@@ -40,4 +40,5 @@ package object iomonad {
     Par.run(E) {
       IO3.run(io)(IO3.parMonad)
     }
+
 }
