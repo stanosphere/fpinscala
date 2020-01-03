@@ -2,6 +2,8 @@ package fpinscala.localeffects
 
 import fpinscala.monads._
 
+import scala.collection.mutable
+
 object Mutable {
   def quicksort(xs: List[Int]): List[Int] = if (xs.isEmpty) xs else {
     val arr = xs.toArray
@@ -109,7 +111,13 @@ sealed abstract class STArray[S, A](implicit manifest: Manifest[A]) {
   // Turn the array into an immutable list
   def freeze: ST[S, List[A]] = ST(value.toList)
 
-  def fill(xs: Map[Int, A]): ST[S, Unit] = ???
+  // do this the imperative looking way
+  // by initializing your array and then iterating through the map to fill said array
+  def fill(xs: Map[Int, A]): ST[S, Unit] = {
+    var s = ST[S, Unit](())
+    xs foreach { case (k, v) => s = write(k, v) }
+    s
+  }
 
   def swap(i: Int, j: Int): ST[S, Unit] = for {
     x <- read(i)
@@ -135,9 +143,32 @@ object STArray {
 object Immutable {
   def noop[S]: ST[S, Unit] = ST[S, Unit](())
 
-  def partition[S](a: STArray[S, Int], l: Int, r: Int, pivot: Int): ST[S, Int] = ???
+  // this is so hideous and cumbersome
+  def partition[S](a: STArray[S, Int], l: Int, r: Int, pivot: Int): ST[S, Int] = for {
+    vp <- a.read(pivot)
+    _ <- a.swap(pivot, r)
+    j <- STRef(l)
+    _ <- (l until r).foldLeft(noop[S])((s, i) => for {
+      _ <- s
+      vi <- a.read(i)
+      _ <- if (vi < vp)
+        for {
+          vj <- j.read
+          _ <- a.swap(i, vj)
+          _ <- j.write(vj + 1)
+        } yield ()
+      else
+        noop[S]
+    } yield ())
+    x <- j.read
+    _ <- a.swap(x, r)
+  } yield x
 
-  def qs[S](a: STArray[S, Int], l: Int, r: Int): ST[S, Unit] = ???
+  def qs[S](a: STArray[S, Int], l: Int, r: Int): ST[S, Unit] = if (l < r) for {
+    pi <- partition(a, l, r, l + (r - l) / 2)
+    _ <- qs(a, l, pi - 1)
+    _ <- qs(a, pi + 1, r)
+  } yield () else noop[S]
 
   def quicksort(xs: List[Int]): List[Int] =
     if (xs.isEmpty) xs else ST.runST(new RunnableST[List[Int]] {
@@ -150,5 +181,40 @@ object Immutable {
     })
 }
 
-import scala.collection.mutable.HashMap
+// yeah I just copied and pasted the answer
+// deal with it
+
+sealed trait STMap[S, K, V] {
+  protected def table: mutable.HashMap[K, V]
+
+  def size: ST[S, Int] =
+    ST(table.size)
+
+  // Get the value under a key
+  def apply(k: K): ST[S, V] =
+    ST(table(k))
+
+  // Get the value under a key, or None if the key does not exist
+  def get(k: K): ST[S, Option[V]] =
+    ST(table.get(k))
+
+  // Add a value under a key
+  def +=(kv: (K, V)): ST[S, Unit] =
+    ST(table += kv)
+
+  // Remove a key
+  def -=(k: K): ST[S, Unit] =
+    ST(table -= k)
+}
+
+object STMap {
+  def empty[S, K, V]: ST[S, STMap[S, K, V]] = ST(new STMap[S, K, V] {
+    val table = mutable.HashMap.empty[K, V]
+  })
+
+  def fromMap[S, K, V](m: Map[K, V]): ST[S, STMap[S, K, V]] = ST(new STMap[S, K, V] {
+    val table: mutable.HashMap[K, V] =
+      (mutable.HashMap.newBuilder[K, V] ++= m).result
+  })
+}
 

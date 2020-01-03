@@ -30,4 +30,23 @@ object LocalEffectsPlay extends App {
   val res = ST.runST(runnable)
   println(res)
 
+  val runnable2 = new RunnableST[(Int, Int)] {
+    override def apply[S]: ST[S, (Int, Int)] =
+      for {
+        arr <- STArray(10, 0)
+        _ <- arr.fill(Map(0 -> 0, 1 -> 1))
+        x <- arr.read(0)
+        y <- arr.read(1)
+      } yield (x, y)
+  }
+
+  println(ST.runST(runnable2))
+
+  val lst = List(5, 4, 3, 2, 1, 2, 3, 4, 5)
+
+  val sorted = Immutable.quicksort(lst)
+  val actualltSorted = Mutable.quicksort(lst)
+  println(sorted)
+  println(actualltSorted)
+
 }
