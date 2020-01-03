@@ -47,7 +47,7 @@ sealed trait ST[S, A] {
   }
 
   def flatMap[B](f: A => ST[S, B]): ST[S, B] = new ST[S, B] {
-    def run(s: S):(B,S) = {
+    def run(s: S): (B, S) = {
       val (a, s1) = self.run(s)
       f(a).run(s1)
     }
