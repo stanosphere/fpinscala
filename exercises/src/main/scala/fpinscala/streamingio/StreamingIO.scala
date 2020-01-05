@@ -143,7 +143,19 @@ input (`Await`) or signaling termination via `Halt`.
     /*
      * Exercise 5: Implement `|>`. Let the types guide your implementation.
      */
-    def |>[O2](p2: Process[O, O2]): Process[I, O2] = ???
+    def |>[O2](p2: Process[O, O2]): Process[I, O2] = {
+      val p1: Process[I, O] = this
+
+      p2 match {
+        case Halt() => Halt()
+        case Emit(h, t) => Emit(h, p1 |> t)
+        case Await(f) => p1 match {
+          case Halt() => Halt() |> f(None)
+          case Emit(h, t) => t |> f(Some(h))
+          case Await(g) => Await((i: Option[I]) => g(i) |> p2)
+        }
+      }
+    }
 
     /*
      * Feed `in` to this `Process`. Uses a tail recursive loop as long
@@ -244,6 +256,7 @@ input (`Await`) or signaling termination via `Halt`.
 
     import fpinscala.iomonad.Monad
 
+    // here I is **partially applied**
     def monad[I]: Monad[({type f[x] = Process[I, x]})#f] =
       new Monad[({type f[x] = Process[I, x]})#f] {
         def unit[O](o: => O): Process[I, O] = emit(o)
@@ -304,13 +317,27 @@ input (`Await`) or signaling termination via `Halt`.
     /*
      * Exercise 1: Implement `take`, `drop`, `takeWhile`, and `dropWhile`.
      */
-    def take[I](n: Int): Process[I, I] = ???
+    def take[I](n: Int): Process[I, I] =
+      if (n > 0) await(emit(_, take(n - 1)))
+      else Halt()
 
-    def drop[I](n: Int): Process[I, I] = ???
+    def drop[I](n: Int): Process[I, I] =
+      if (n > 0) id
+      else Halt()
 
-    def takeWhile[I](f: I => Boolean): Process[I, I] = ???
+    def takeWhile[I](p: I => Boolean): Process[I, I] =
+      await(i =>
+        if (p(i)) emit(i, takeWhile(p))
+        else Halt()
+      )
 
-    def dropWhile[I](f: I => Boolean): Process[I, I] = ???
+
+    def dropWhile[I](p: I => Boolean): Process[I, I] =
+      await(i =>
+        if (p(i)) dropWhile(p)
+        else emit(i, id)
+        // remember, if you don't provide an argument, the default is to Halt
+      )
 
     /* The identity `Process`, just repeatedly echos its input. */
     def id[I]: Process[I, I] = lift(identity)
@@ -318,7 +345,12 @@ input (`Await`) or signaling termination via `Halt`.
     /*
      * Exercise 2: Implement `count`.
      */
-    def count[I]: Process[I, Int] = ???
+    def count[I]: Process[I, Int] = {
+      def go(n: Int): Process[I, Int] =
+        await(_ => emit(n + 1, go(n + 1)))
+
+      go(0)
+    }
 
     /* For comparison, here is an explicit recursive implementation. */
     def count2[I]: Process[I, Int] = {
@@ -331,8 +363,17 @@ input (`Await`) or signaling termination via `Halt`.
     /*
      * Exercise 3: Implement `mean`.
      */
-    def mean: Process[Double, Double] = ???
+    def mean: Process[Double, Double] = {
+      def go(count: Int, sum: Double): Process[Double, Double] =
+        await((i: Double) => {
+          val average = (sum + i) / (count + 1)
+          emit(average, go(count + 1, sum + i))
+        })
 
+      go(0, 0.0)
+    }
+
+    // feels like a perverse sort of monoid!
     def loop[S, I, O](z: S)(f: (I, S) => (O, S)): Process[I, O] =
       await((i: I) => f(i, z) match {
         case (o, s2) => emit(o, loop(s2)(f))
@@ -340,9 +381,17 @@ input (`Await`) or signaling termination via `Halt`.
 
     /* Exercise 4: Implement `sum` and `count` in terms of `loop` */
 
-    def sum2: Process[Double, Double] = ???
+    def sumViaLoop: Process[Double, Double] =
+      loop(0.0)((i, s) => {
+        val res = i + s
+        (res, res)
+      })
 
-    def count3[I]: Process[I, Int] = ???
+    def countViaLoop[I]: Process[I, Int] =
+      loop(0)((_, s) => {
+        val res = s + 1
+        (res, res)
+      })
 
     /*
      * Exercise 7: Can you think of a generic combinator that would

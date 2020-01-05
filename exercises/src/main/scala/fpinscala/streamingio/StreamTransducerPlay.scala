@@ -37,4 +37,38 @@ object StreamTransducerPlay extends App {
   println(ys)
   // => List(2, 4, 6)
 
+  // this looks rather like how a `scanLeft` would work
+  // I wonder if it can be generalised?
+  def sum: Process[Double, Double] = {
+    def go(acc: Double): Process[Double, Double] =
+      Await({
+        case Some(d) => Emit(d + acc, go(d + acc))
+        case None => Halt()
+      })
+
+    go(0.0)
+  }
+
+  // remember process has an `apply` on it, which is why this syntax for sum works!
+  val s = sum(Stream(1.0, 2.0, 3.0, 4.0)).toList
+  println(s)
+
+  // check take does what I think
+  val myStream = Stream(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+
+  println(Process.take(2)(myStream).toList)
+
+  // and the rest
+
+  def lessThanFive(x: Int): Boolean = x < 5
+
+  println(Process.drop(5)(myStream).toList)
+  println(Process.takeWhile(lessThanFive)(myStream).toList)
+  println(Process.dropWhile(lessThanFive)(myStream).toList)
+
+  println(Process.mean(Stream(1.0, 2.0, 3.0, 4.0)).toList)
+
+  println(Process.sumViaLoop(Stream(1.0, 2.0, 3.0, 4.0)).toList)
+  println(Process.countViaLoop(Stream(1.0, 2.0, 3.0, 4.0)).toList)
+
 }
