@@ -71,4 +71,15 @@ object StreamTransducerPlay extends App {
   println(Process.sumViaLoop(Stream(1.0, 2.0, 3.0, 4.0)).toList)
   println(Process.countViaLoop(Stream(1.0, 2.0, 3.0, 4.0)).toList)
 
+  // see if my zipWithIndex works
+  val p2 = Process.id.zipWithIndex
+
+  println(Process.id.zipWithIndex(Stream("a", "b", "c", 2)).toList)
+  // the following does not compile (presumably because I've not defined the type of p2 correctly)
+  //  println(p2.zipWithIndex(Stream("a", "b", "c", 2)).toList)
+
+  println(Process.exists((x: Int) => x == 5)(Stream(1, 2, 3, 4, 5, 6, 7)).toList)
+  println(Process.exists((x: Int) => x == 10)(Stream(1, 2, 3, 4, 5, 6, 7)).toList)
+
+
 }

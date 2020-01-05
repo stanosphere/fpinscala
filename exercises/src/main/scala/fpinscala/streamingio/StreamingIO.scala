@@ -222,7 +222,21 @@ input (`Await`) or signaling termination via `Halt`.
     /*
      * Exercise 6: Implement `zipWithIndex`.
      */
-    def zipWithIndex: Process[I, (O, Int)] = ???
+    def zipWithIndex: Process[I, (O, Int)] = {
+
+      def go(n: Int, stream: Process[I, O]): Process[I, (O, Int)] =
+        stream match {
+          case Emit(h, t) => Emit((h, n), go(n + 1, t))
+          case Halt() => Halt()
+          case Await(f) => Await({
+            case Some(q) => go(n, f(Some(q)))
+            case None => go(n, f(None))
+          })
+        }
+
+      go(0, this)
+
+    }
 
     /* Add `p` to the fallback branch of this process */
     def orElse(p: Process[I, O]): Process[I, O] = this match {
@@ -256,6 +270,8 @@ input (`Await`) or signaling termination via `Halt`.
 
     import fpinscala.iomonad.Monad
 
+    // this monad is kinda like the list monad
+    // except it also accepts inputs
     // here I is **partially applied**
     def monad[I]: Monad[({type f[x] = Process[I, x]})#f] =
       new Monad[({type f[x] = Process[I, x]})#f] {
@@ -398,6 +414,21 @@ input (`Await`) or signaling termination via `Halt`.
      * allow for the definition of `mean` in terms of `sum` and
      * `count`?
      */
+    def zip[A, B, C](p1: Process[A, B], p2: Process[A, C]): Process[A, (B, C)] =
+      (p1, p2) match {
+        // if either are halting, then we're done
+        case (Halt(), _) => Halt()
+        case (_, Halt()) => Halt()
+        // if both are emitting then we emit our pair of values
+        case (Emit(b, t1), Emit(c, t2)) => Emit((b, c), zip(t1, t2))
+        // if one is awaiting then we call the awaiting function
+        // and make sure the correct input is fed to the other stream
+        // this is the ridonculous part
+        case (Await(f), _) =>
+          Await((oa: Option[A]) => zip(f(oa), feed(oa)(p2)))
+        case (_, Await(f)) =>
+          Await((oa: Option[A]) => zip(feed(oa)(p1), f(oa)))
+      }
 
     def feed[A, B](oa: Option[A])(p: Process[A, B]): Process[A, B] =
       p match {
@@ -412,18 +443,35 @@ input (`Await`) or signaling termination via `Halt`.
      * See definition on `Process` above.
      */
 
+    // after you see a particular value
+    // set all values of process to said value to true
+    def setAfter[I](x: I): Process[I, Boolean] = loop(false)((i, s) => {
+      if (s) (true, s)
+      else {
+        val res = x == i
+        (res, res)
+      }
+    })
+
     /*
      * Exercise 8: Implement `exists`
      *
      * We choose to emit all intermediate values, and not halt.
      * See `existsResult` below for a trimmed version.
      */
-    def exists[I](f: I => Boolean): Process[I, Boolean] = ???
+    def exists[I](f: I => Boolean): Process[I, Boolean] = {
+      val doesExist: Process[I, Boolean] =
+        lift((x: I) => f(x))
+
+      val allValues = doesExist |> setAfter(true)
+      allValues
+
+    }
 
     /* Awaits then emits a single value, then halts. */
     def echo[I]: Process[I, I] = await(i => emit(i))
 
-    def skip[I, O]: Process[I, O] = await(i => Halt())
+    def skip[I, O]: Process[I, O] = await(_ => Halt())
 
     def ignore[I, O]: Process[I, O] = skip.repeat
 
