@@ -1,3 +1,4 @@
+import sbt.CrossVersion
 import sbt.Keys.scalacOptions
 
 scalaVersion := "2.12.8"
@@ -47,6 +48,7 @@ lazy val experiments = (project in file("experiments"))
     scalacOptions += "-Ypartial-unification",
     libraryDependencies += "io.monix" %% "monix" % "2.3.3",
     libraryDependencies += "org.scalacheck" %% "scalacheck" % "1.14.0",
+    libraryDependencies += compilerPlugin("org.typelevel" % "kind-projector" % "0.11.0" cross CrossVersion.full),
     libraryDependencies ++= Seq(
       "io.circe" %% "circe-core",
       "io.circe" %% "circe-generic",
