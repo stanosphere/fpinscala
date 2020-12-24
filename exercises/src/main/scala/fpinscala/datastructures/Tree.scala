@@ -1,7 +1,9 @@
 package fpinscala.datastructures
 
 sealed trait Tree[+A]
+
 case class Leaf[A](value: A) extends Tree[A]
+
 case class Branch[A](left: Tree[A], right: Tree[A]) extends Tree[A]
 
 object Tree {
@@ -47,6 +49,6 @@ object Tree {
 
   def mapViaFold[A, B](tree: Tree[A])(f: A => B): Tree[B] = {
     val valueToMappedLeaf = (value: A) => Leaf(f(value)): Tree[B]
-    fold(tree)(valueToMappedLeaf)(Branch(_,_))
+    fold(tree)(valueToMappedLeaf)(Branch(_, _))
   }
 }

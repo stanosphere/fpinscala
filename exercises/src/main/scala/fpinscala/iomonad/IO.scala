@@ -17,7 +17,7 @@ object IO0 {
     def run: Unit
 
     def ++(io: IO): IO = new IO {
-      def run = {
+      def run: Unit = {
         self.run;
         io.run
       }
@@ -26,7 +26,7 @@ object IO0 {
 
   object IO {
     def empty: IO = new IO {
-      def run = ()
+      def run: Unit = ()
     }
   }
 

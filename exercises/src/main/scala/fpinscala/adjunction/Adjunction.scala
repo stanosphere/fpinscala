@@ -1,6 +1,6 @@
-package fpinscala.monads
+package fpinscala.adjunction
 
-import fpinscala.monads.Adjunction.listId
+import fpinscala.monads.{Functor, Id, Monad}
 
 trait Adjunction[F[_], G[_]] {
   def unit[A](a: A): G[F[A]]

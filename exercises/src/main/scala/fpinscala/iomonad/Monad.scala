@@ -1,7 +1,6 @@
 package fpinscala.iomonad
 
-import language.higherKinds // Disable warnings for type constructor polymorphism
-import language.implicitConversions
+import scala.language.{higherKinds, implicitConversions}
 
 trait Functor[F[_]] {
   def map[A, B](a: F[A])(f: A => B): F[B]
@@ -62,7 +61,7 @@ trait Monad[F[_]] extends Functor[F] {
     }
 
   def foreachM[A](l: Stream[A])(f: A => F[Unit]): F[Unit] =
-    foldM_(l)(())((u, a) => skip(f(a)))
+    foldM_(l)(())((_, a) => skip(f(a)))
 
   def seq[A, B, C](f: A => F[B])(g: B => F[C]): A => F[C] =
     f andThen (fb => flatMap(fb)(g))
@@ -78,8 +77,6 @@ trait Monad[F[_]] extends Functor[F] {
 
 trait Monadic[F[_], A] {
   val F: Monad[F]
-
-  import F._
 
   def get: F[A]
 

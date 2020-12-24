@@ -56,7 +56,7 @@ object TraversePlay extends App {
   val stuff: List[Tree[Option[Int]]] =
     List(Tree(None, Nil), Tree(Some(10), List(None, Some(5)).map(leaf)))
 
-  val crazy = mad.traverse(stuff)(x => List(x,x))
+  val crazy = mad.traverse(stuff)(x => List(x, x))
 
   crazy.foreach(println)
 

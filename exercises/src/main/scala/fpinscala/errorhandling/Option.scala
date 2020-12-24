@@ -1,4 +1,5 @@
 package fpinscala.errorhandling
+
 // To get this to work you need to paste it into the repl
 // Use :paste, paste it, and then use ctrl-D to exit paste mode
 
@@ -9,7 +10,7 @@ sealed trait Option[+A] {
   }
 
   // here B is constrained to be a supertype of A
-  def getOrElse[B>:A](default: => B): B = this match {
+  def getOrElse[B >: A](default: => B): B = this match {
     case None => default
     case Some(x) => x
   }
@@ -19,7 +20,7 @@ sealed trait Option[+A] {
     case Some(x) => f(x)
   }
 
-  def orElse[B>:A](ob: => Option[B]): Option[B] = this match {
+  def orElse[B >: A](ob: => Option[B]): Option[B] = this match {
     case None => ob
     case Some(x) => Some(x)
   }
@@ -29,7 +30,9 @@ sealed trait Option[+A] {
     case None => None
   }
 }
+
 case class Some[+A](get: A) extends Option[A]
+
 case object None extends Option[Nothing]
 
 object Option {
@@ -39,7 +42,9 @@ object Option {
       val x = 42 + 5
       x + y
     }
-    catch { case e: Exception => 43 } // A `catch` block is just a pattern matching block like the ones we've seen. `case e: Exception` is a pattern that matches any `Exception`, and it binds this value to the identifier `e`. The match returns the value 43.
+    catch {
+      case e: Exception => 43
+    } // A `catch` block is just a pattern matching block like the ones we've seen. `case e: Exception` is a pattern that matches any `Exception`, and it binds this value to the identifier `e`. The match returns the value 43.
   }
 
   def failingFn2(i: Int): Int = {
@@ -47,7 +52,9 @@ object Option {
       val x = 42 + 5
       x + ((throw new Exception("fail!")): Int) // A thrown Exception can be given any type; here we're annotating it with the type `Int`
     }
-    catch { case e: Exception => 43 }
+    catch {
+      case _: Exception => 43
+    }
   }
 
   def mean(xs: Seq[Double]): Option[Double] =
@@ -57,8 +64,8 @@ object Option {
   def variance(xs: Seq[Double]): Option[Double] =
     mean(xs).flatMap(m => mean(xs.map(x => math.pow(x - m, 2))))
 
-  def map2[A,B,C](a: Option[A], b: Option[B])(f: (A,B) => C): Option[C] =
-    (a,b) match {
+  def map2[A, B, C](a: Option[A], b: Option[B])(f: (A, B) => C): Option[C] =
+    (a, b) match {
       case (_, None) => None
       case (None, _) => None
       case (Some(x), Some(y)) => Some(f(x, y))
@@ -68,14 +75,14 @@ object Option {
     xs.foldRight(Some(Nil): Option[List[A]])((x, acc) => (acc, x) match {
       case (None, _) => None
       case (_, None) => None
-      case (Some(lst), Some(y)) => Some(y::lst)
+      case (Some(lst), Some(y)) => Some(y :: lst)
     })
 
   // this is a much more sensible implementation and it fully demonstrates how useful map2 is!
   def sequence_1[A](xs: List[Option[A]]): Option[List[A]] =
-    xs.foldRight(Some(Nil): Option[List[A]])((x,y) => map2(x,y)(_ :: _))
+    xs.foldRight(Some(Nil): Option[List[A]])((x, y) => map2(x, y)(_ :: _))
 
-  def traverse[A,B](xs: List[A])(f: A => Option[B]): Option[List[B]] =
+  def traverse[A, B](xs: List[A])(f: A => Option[B]): Option[List[B]] =
     xs.foldRight(Some(Nil): Option[List[B]])((x, acc) => (acc, f(x)) match {
       case (None, _) => None
       case (_, None) => None
@@ -88,7 +95,7 @@ object Option {
   def sequenceViaTraverse[A](xs: List[Option[A]]): Option[List[A]] =
     traverse(xs)(x => x)
 
-  def map2_2[A,B,C](a: Option[A], b: Option[B])(f: (A, B) => C): Option[C] =
+  def map2_2[A, B, C](a: Option[A], b: Option[B])(f: (A, B) => C): Option[C] =
     for {
       aa <- a
       bb <- b

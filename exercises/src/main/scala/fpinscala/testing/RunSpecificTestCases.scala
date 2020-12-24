@@ -7,8 +7,8 @@ import fpinscala.parallelism.Par.Par
 import fpinscala.testing.Gen._
 import fpinscala.testing.Prop.forAll
 
-object RunSpecificTestCases extends App{
-  val smallInt: Gen[Int] = Gen.choose(-10,10)
+object RunSpecificTestCases extends App {
+  val smallInt: Gen[Int] = Gen.choose(-10, 10)
 
   // No value greater than `xMax` should exist in `xs`
   val maxProp: Prop = forAll(listOf(smallInt)) { xs =>
@@ -18,7 +18,7 @@ object RunSpecificTestCases extends App{
 
   // this fails immediately because we start with an empty list!!
   // for which max is not defined
-//  Prop.run(maxProp, 10, 10)
+  //  Prop.run(maxProp, 10, 10)
 
   def listOf1[A](g: Gen[A]): SGen[List[A]] =
     SGen(n => g.listOfN(n max 1))
@@ -36,7 +36,7 @@ object RunSpecificTestCases extends App{
     lazy val hasLengthOfOne = sortedList.tail.isEmpty
     lazy val aPairOfElementsIsUnsorted = sortedList
       .zip(sortedList.tail)
-      .exists { case (a,b) => a > b }
+      .exists { case (a, b) => a > b }
 
     val listsAreSameLength = sortedList.length == xs.length
     val isSorted = isEmpty || hasLengthOfOne || !aPairOfElementsIsUnsorted
@@ -63,7 +63,7 @@ object RunSpecificTestCases extends App{
   }
 
   val RandomExecutorService = weighted(
-    choose(1,4).map(Executors.newFixedThreadPool) -> 3,
+    choose(1, 4).map(Executors.newFixedThreadPool) -> 3,
     unit(Executors.newCachedThreadPool) -> 1,
   )
 
@@ -73,7 +73,7 @@ object RunSpecificTestCases extends App{
     }
 
   val parInt = Gen
-    .choose(0,10)
+    .choose(0, 10)
     .map(Par.unit)
 
   val forkProp = forAllPar(parInt)(int =>

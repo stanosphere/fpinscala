@@ -1,6 +1,6 @@
 package fpinscala.errorhandling
 
-sealed trait Either[+E,+A] {
+sealed trait Either[+E, +A] {
   def map[B](f: A => B): Either[E, B] = this match {
     case Left(x) => Left(x)
     case Right(x) => Right(f(x))
@@ -23,26 +23,31 @@ sealed trait Either[+E,+A] {
     } yield f(aa, bb)
 }
 
-case class Left[+E](get: E) extends Either[E,Nothing]
-case class Right[+A](get: A) extends Either[Nothing,A]
+case class Left[+E](get: E) extends Either[E, Nothing]
+
+case class Right[+A](get: A) extends Either[Nothing, A]
 
 object Either {
-  def traverse[E,A,B](lst: List[A])(f: A => Either[E, B]): Either[E, List[B]] =
+  def traverse[E, A, B](lst: List[A])(f: A => Either[E, B]): Either[E, List[B]] =
     lst.foldRight[Either[E, List[B]]](Right(Nil))((x, xs) => f(x).map2(xs)(_ :: _))
 
-  def sequence[E,A](lst: List[Either[E,A]]): Either[E,List[A]] =
+  def sequence[E, A](lst: List[Either[E, A]]): Either[E, List[A]] =
     traverse(lst)(x => x)
 
-  def mean(xs: IndexedSeq[Double]): Either[String, Double] = 
+  def mean(xs: IndexedSeq[Double]): Either[String, Double] =
     if (xs.isEmpty) Left("mean of empty list!")
     else Right(xs.sum / xs.length)
 
-  def safeDiv(x: Int, y: Int): Either[Exception, Int] = 
+  def safeDiv(x: Int, y: Int): Either[Exception, Int] =
     try Right(x / y)
-    catch { case e: Exception => Left(e) }
+    catch {
+      case e: Exception => Left(e)
+    }
 
   def Try[A](a: => A): Either[Exception, A] =
     try Right(a)
-    catch { case e: Exception => Left(e) }
+    catch {
+      case e: Exception => Left(e)
+    }
 
 }

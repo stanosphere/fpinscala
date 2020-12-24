@@ -215,7 +215,7 @@ case class Success[A](a: A) extends Validation[Nothing, A]
 
 object Applicative {
 
-  val streamApplicative = new Applicative[Stream] {
+  val streamApplicative: Applicative[Stream] = new Applicative[Stream] {
 
     def unit[A](a: => A): Stream[A] =
       Stream.continually(a) // The infinite, constant stream

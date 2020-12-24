@@ -1,4 +1,6 @@
-package fpinscala.monads
+package fpinscala.adjunction
+
+import fpinscala.monads.Id
 
 object AdjunctionPlay extends App {
   val m = Adjunction.listId.monadFromAdjunction

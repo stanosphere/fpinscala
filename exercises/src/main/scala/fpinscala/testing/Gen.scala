@@ -6,7 +6,7 @@ import fpinscala.parallelism._
 import fpinscala.parallelism.Par.Par
 import Gen._
 import Prop._
-import java.util.concurrent.{Executors,ExecutorService}
+import java.util.concurrent.{Executors, ExecutorService}
 
 /*
 The library developed in this chapter goes through several iterations. This file is just the
@@ -16,7 +16,7 @@ shell, which you can fill in and modify while working through the chapter.
 case class Prop(run: (MaxSize, TestCases, RNG) => Result) {
   /* runs the current Prop and then the next one if the first one is cool */
   // no need to add labels to this one since if the first fails the second doesn't even run
-  def &&(p : Prop): Prop = Prop((max, testCases, rng) => {
+  def &&(p: Prop): Prop = Prop((max, testCases, rng) => {
     run(max, testCases, rng) match {
       case Passed => p.run(max, testCases, rng)
       case Proved => p.run(max, testCases, rng)
@@ -24,9 +24,9 @@ case class Prop(run: (MaxSize, TestCases, RNG) => Result) {
     }
   })
 
-  def ||(p : Prop): Prop = Prop((max, testCases, rng) => {
+  def ||(p: Prop): Prop = Prop((max, testCases, rng) => {
     run(max, testCases, rng) match {
-      case Falsified(failureMessageInFirstExecution,_) => p
+      case Falsified(failureMessageInFirstExecution, _) => p
         .markAsFailed(failureMessageInFirstExecution)
         .run(max, testCases, rng)
       case Passed => Passed
@@ -34,7 +34,7 @@ case class Prop(run: (MaxSize, TestCases, RNG) => Result) {
     }
   })
 
-  def markAsFailed(newErrorMessage: String) = Prop((max, testCases, rng) => {
+  def markAsFailed(newErrorMessage: String): Prop = Prop((max, testCases, rng) => {
     run(max, testCases, rng) match {
       case Falsified(currentError, successes) =>
         Falsified(s"$newErrorMessage\n$currentError", successes)
@@ -53,12 +53,15 @@ object Prop {
   sealed trait Result {
     def isFalsified: Boolean
   }
+
   case object Passed extends Result {
     def isFalsified = false
   }
+
   case class Falsified(failure: FailedCase, successes: SuccessCount) extends Result {
     def isFalsified = true
   }
+
   case object Proved extends Result {
     def isFalsified = false
   }
@@ -68,7 +71,7 @@ object Prop {
     Stream.unfold(rng)(r => Some(g.sample.run(r)))
 
   def apply(f: (TestCases, RNG) => Result): Prop =
-    Prop { (_,n,rng) => f(n,rng) }
+    Prop { (_, n, rng) => f(n, rng) }
 
   def forAll[A](g: SGen[A])(f: A => Boolean): Prop =
     forAll(g(_))(f)
@@ -88,23 +91,28 @@ object Prop {
   }
 
   def forAll[A](as: Gen[A])(f: A => Boolean): Prop = Prop {
-    (n, rng) => randomStream(as)(rng)
-      .zip(Stream.from(0))
-      .take(n)
-      .map { case (a, i) =>
-        try { if (f(a)) Passed else Falsified(a.toString, i) }
-        catch { case exc: Exception => Falsified(buildMsg(a, exc), i) }
-      }
-      .find(_.isFalsified)
-      .getOrElse(Passed)
+    (n, rng) =>
+      randomStream(as)(rng)
+        .zip(Stream.from(0))
+        .take(n)
+        .map { case (a, i) =>
+          try {
+            if (f(a)) Passed else Falsified(a.toString, i)
+          }
+          catch {
+            case exc: Exception => Falsified(buildMsg(a, exc), i)
+          }
+        }
+        .find(_.isFalsified)
+        .getOrElse(Passed)
   }
 
   def buildMsg[A](s: A, e: Exception): String =
     s"""
-      |test case: $s
-      |generated an exception: ${e.getMessage}
-      |stack trace:
-      |${e.getStackTrace.mkString("\n")}
+       |test case: $s
+       |generated an exception: ${e.getMessage}
+       |stack trace:
+       |${e.getStackTrace.mkString("\n")}
     """.stripMargin
 
   def check(p: => Boolean): Prop = Prop { (_, _, _) =>
@@ -128,17 +136,18 @@ object Prop {
 
 trait GenTrait[+A] {
   def map[B](f: A => B): Gen[B]
+
   def flatMap[B](f: A => Gen[B]): Gen[B]
 }
 
-case class Gen[+A](sample: State[RNG,A]) extends GenTrait[A] {
+case class Gen[+A](sample: State[RNG, A]) extends GenTrait[A] {
   def map[B](f: A => B): Gen[B] =
     Gen(sample.map(f))
 
-  def map2[B,C](gb: Gen[B])(f: (A,B) => C) =
+  def map2[B, C](gb: Gen[B])(f: (A, B) => C): Gen[C] =
     Gen(sample.map2(gb.sample)(f))
 
-  def map3[B,C,D](gb: Gen[B], gc: Gen[C])(f: (A,B,C) => D) =
+  def map3[B, C, D](gb: Gen[B], gc: Gen[C])(f: (A, B, C) => D): Gen[D] =
     Gen(sample.map3(gb.sample, gc.sample)(f))
 
   def flatMap[B](f: A => Gen[B]): Gen[B] =
@@ -161,16 +170,16 @@ case class Gen[+A](sample: State[RNG,A]) extends GenTrait[A] {
   def unsized: SGen[A] = SGen(_ => this)
 
   // literally just for combining a ppair of generator values
-  def **[B](g: Gen[B]): Gen[(A,B)] =
-    (this map2 g)((a,b) => (a,b))
+  def **[B](g: Gen[B]): Gen[(A, B)] =
+    (this map2 g) ((a, b) => (a, b))
 }
 
 object Gen {
   def unit[A](a: => A): Gen[A] =
     Gen(State(s => (a, s)))
 
-  def map3[A1,A2,A3,B](g1: Gen[A1], g2: Gen[A2],g3: Gen[A3])(f: (A1,A2,A3) => B): Gen[B] =
-    g1.map3(g2,g3)(f)
+  def map3[A1, A2, A3, B](g1: Gen[A1], g2: Gen[A2], g3: Gen[A3])(f: (A1, A2, A3) => B): Gen[B] =
+    g1.map3(g2, g3)(f)
 
   def choose(start: Int, stopExclusive: Int): Gen[Int] =
     Gen(State(RNG.nonNegativeInt).map(n => start + n % (stopExclusive - start)))
@@ -185,14 +194,14 @@ object Gen {
     SGen(listOfN(_, g))
 
   def chooseTwoInts(start: Int, stopExclusive: Int): Gen[(Int, Int)] =
-    choose(start, stopExclusive).map2(choose(start, stopExclusive))((x,y) => (x,y))
+    choose(start, stopExclusive).map2(choose(start, stopExclusive))((x, y) => (x, y))
 
   private def listOfNumbersToString(xs: Gen[List[Int]]): Gen[String] =
     xs.map(_.map(_.toChar).mkString)
 
   // this will give you all sorts of characters!
   def chooseString(length: Int): Gen[String] =
-    listOfNumbersToString(listOfN(length, choose(1,1000)))
+    listOfNumbersToString(listOfN(length, choose(1, 1000)))
 
   def chooseString(randomInt: Gen[Int]): Gen[String] =
     randomInt flatMap chooseString
@@ -243,9 +252,9 @@ object Gen {
 
     choice flatMap (x =>
       zipped
-      .find(intervalAndGen => isBetween(x)(intervalAndGen._1))
-      .get._2._1
-    )
+        .find(intervalAndGen => isBetween(x)(intervalAndGen._1))
+        .get._2._1
+      )
   }
 
   def weighted[A](g1: (Gen[A], Int), g2: (Gen[A], Int)): Gen[A] = {
@@ -259,8 +268,9 @@ object Gen {
   // the Some is to indicate that this is a valid way of matching
   // you can use None to indicate bad ways of matching
   object ** {
-    def unapply[A,B](p: (A,B)) = Some(p)
+    def unapply[A, B](p: (A, B)) = Some(p)
   }
+
 }
 
 case class SGen[+A](forSize: Int => Gen[A]) {
@@ -268,12 +278,15 @@ case class SGen[+A](forSize: Int => Gen[A]) {
 
   def map[B](f: A => B): SGen[B] = {
     def g(n: Int): Gen[B] = forSize(n) map f
+
     SGen(g)
   }
 
   def flatMap[B](f: A => SGen[B]): SGen[B] = {
     def forFlatMap(n: Int)(a: A): Gen[B] = f(a).forSize(n)
-    def h(n: Int): Gen[B] = forSize(n) flatMap(forFlatMap(n))
+
+    def h(n: Int): Gen[B] = forSize(n) flatMap forFlatMap(n)
+
     SGen(h)
   }
 }

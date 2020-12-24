@@ -81,6 +81,7 @@ object RNG {
 
   // let's try to be tail recursive af (remember to decrement the count)
   def ints(count: Int)(rng: RNG): (List[Int], RNG) = {
+    @scala.annotation.tailrec
     def go(i: Int, lst: List[Int], gen: RNG): (List[Int], RNG) = {
       if (i == 0) (lst, gen)
       else {
@@ -201,9 +202,9 @@ object State {
       case (Coin, Machine(false, _, _)) => machineState // unlocked so putting a coin in does nothing
       case (Turn, Machine(true, _, _)) => machineState // can't turn a locked machine
       case (Turn, Machine(false, candies, coins)) =>
-        Machine(true, candies - 1, coins) // turning an unlocked machine releases a candy and relocks the machine
+        Machine(locked = true, candies - 1, coins) // turning an unlocked machine releases a candy and relocks the machine
       case (Coin, Machine(true, candies, coins)) =>
-        Machine(false, candies, coins + 1) // inserting a coin into an unlocked machine
+        Machine(locked = false, candies, coins + 1) // inserting a coin into an unlocked machine
     }
 
   // whilst this implementation is correct it might be wise to try using only the
