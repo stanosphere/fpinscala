@@ -36,23 +36,36 @@ abstract class Adjunction[F[_] : Functor, G[_] : Functor] {
     override def tailRecM[A, B](a: A)(f: A => M[Either[A, B]]): M[B] =
       flatMap(f(a))(_.fold(tailRecM(_)(f), pure))
   }
-}
 
-class AdjunctionLaws[F[_] : Functor, G[_] : Functor](adj: Adjunction[F, G]) {
-  def leftIdentity[A, B](testFunction: A => G[B], testValue: A): Boolean = {
-    // this needs to be the identity function
-    val id: (A => G[B]) => A => G[B] = adj.leftAdjunct[A, B] compose adj.rightAdjunct[A, B]
+  // from an adjunction one can ALWAYS derive a corresponding Monad and CoMonad Pair
+  val monad2: Monad[Lambda[x => G[F[x]]]] = new Monad[Lambda[x => G[F[x]]]] {
+    override def pure[A](a: A): M[A] =
+      _unit(a)
 
-    testFunction(testValue) == id(testFunction)(testValue)
-  }
+    override def flatMap[A, B](ma: M[A])(f: A => M[B]): M[B] =
+      Functor[G].map(Functor[M].map(ma)(f))(counit)
 
-  def rightIdentity[A, B](testFunction: F[A] => B, testValue: F[A]): Boolean = {
-    // this needs to be the identity function
-    val id: (F[A] => B) => F[A] => B = adj.rightAdjunct[A, B] compose adj.leftAdjunct[A, B]
-
-    testFunction(testValue) == id(testFunction)(testValue)
+    // there might be a way to ACTUALLY make this tail recursive using the adjunctions? But I somewhat doubt it
+    override def tailRecM[A, B](a: A)(f: A => M[Either[A, B]]): M[B] =
+      flatMap(f(a))(_.fold(tailRecM(_)(f), pure))
   }
 }
+
+//class AdjunctionLaws[F[_] : Functor, G[_] : Functor](adj: Adjunction[F, G]) {
+//  def leftIdentity[A, B](testFunction: A => G[B], testValue: A): Boolean = {
+//    // this needs to be the identity function
+//    val id: (A => G[B]) => A => G[B] = adj.leftAdjunct[A, B] compose adj.rightAdjunct[A, B]
+//
+//    testFunction(testValue) == id(testFunction)(testValue)
+//  }
+//
+//  def rightIdentity[A, B](testFunction: F[A] => B, testValue: F[A]): Boolean = {
+//    // this needs to be the identity function
+//    val id: (F[A] => B) => F[A] => B = adj.rightAdjunct[A, B] compose adj.leftAdjunct[A, B]
+//
+//    testFunction(testValue) == id(testFunction)(testValue)
+//  }
+//}
 
 object AdjunctionInstances {
 
@@ -76,4 +89,14 @@ object AdjunctionInstances {
       case (a, r) => f(a)(r)
     }
   }
+
+  // I would have thought this would simplify to R => (*, R)???
+  def stateMonad[R]: Monad[Lambda[x => R => (x, R)]] = writerReaderAdjunction[R].monad2
+
+}
+
+object Go extends App {
+  val m = AdjunctionInstances.stateMonad[Int].pure("hello")
+
+  println(m(5))
 }
