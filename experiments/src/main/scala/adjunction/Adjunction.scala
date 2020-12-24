@@ -26,15 +26,16 @@ abstract class Adjunction[F[_] : Functor, G[_] : Functor] {
 
   // from an adjunction one can ALWAYS derive a corresponding Monad and CoMonad Pair
   val monad: Monad[M] = new Monad[M] {
-    override def pure[A](a: A): M[A] = _unit(a)
+    override def pure[A](a: A): M[A] =
+      _unit(a)
 
     override def flatMap[A, B](ma: M[A])(f: A => M[B]): M[B] =
       Functor[G].map(Functor[M].map(ma)(f))(counit)
 
-    override def tailRecM[A, B](a: A)(f: A => M[Either[A, B]]): M[B] = ???
+    // there might be a way to ACTUALLY make this tail recursive using the adjunctions? But I somewhat doubt it
+    override def tailRecM[A, B](a: A)(f: A => M[Either[A, B]]): M[B] =
+      flatMap(f(a))(_.fold(tailRecM(_)(f), pure))
   }
-
-
 }
 
 class AdjunctionLaws[F[_] : Functor, G[_] : Functor](adj: Adjunction[F, G]) {
