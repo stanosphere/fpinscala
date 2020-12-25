@@ -5,8 +5,10 @@ import cats.implicits._
 
 abstract class Adjunction[F[_] : Functor, G[_] : Functor] {
 
+  // TODO write in terms of unit and counit
   def leftAdjunct[A, B](f: F[A] => B): A => G[B]
 
+  // TODO write in terms of unit and counit
   def rightAdjunct[A, B](f: A => G[B]): F[A] => B
 
   def unit[A](a: A): G[F[A]] =
@@ -25,20 +27,7 @@ abstract class Adjunction[F[_] : Functor, G[_] : Functor] {
   }
 
   // from an adjunction one can ALWAYS derive a corresponding Monad and CoMonad Pair
-  val monad: Monad[M] = new Monad[M] {
-    override def pure[A](a: A): M[A] =
-      _unit(a)
-
-    override def flatMap[A, B](ma: M[A])(f: A => M[B]): M[B] =
-      Functor[G].map(Functor[M].map(ma)(f))(counit)
-
-    // there might be a way to ACTUALLY make this tail recursive using the adjunctions? But I somewhat doubt it
-    override def tailRecM[A, B](a: A)(f: A => M[Either[A, B]]): M[B] =
-      flatMap(f(a))(_.fold(tailRecM(_)(f), pure))
-  }
-
-  // from an adjunction one can ALWAYS derive a corresponding Monad and CoMonad Pair
-  val monad2: Monad[Lambda[x => G[F[x]]]] = new Monad[Lambda[x => G[F[x]]]] {
+  val monad: Monad[Lambda[x => G[F[x]]]] = new Monad[Lambda[x => G[F[x]]]] {
     override def pure[A](a: A): M[A] =
       _unit(a)
 
@@ -91,7 +80,7 @@ object AdjunctionInstances {
   }
 
   // I would have thought this would simplify to R => (*, R)???
-  def stateMonad[R]: Monad[Lambda[x => R => (x, R)]] = writerReaderAdjunction[R].monad2
+  def stateMonad[R]: Monad[Lambda[x => R => (x, R)]] = writerReaderAdjunction[R].monad
 
 }
 
