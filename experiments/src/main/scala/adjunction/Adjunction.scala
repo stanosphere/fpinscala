@@ -51,21 +51,21 @@ abstract class Adjunction[F[_] : Functor, G[_] : Functor] {
   }
 }
 
-//class AdjunctionLaws[F[_] : Functor, G[_] : Functor](adj: Adjunction[F, G]) {
-//  def leftIdentity[A, B](testFunction: A => G[B], testValue: A): Boolean = {
-//    // this needs to be the identity function
-//    val id: (A => G[B]) => A => G[B] = adj.leftAdjunct[A, B] compose adj.rightAdjunct[A, B]
-//
-//    testFunction(testValue) == id(testFunction)(testValue)
-//  }
-//
-//  def rightIdentity[A, B](testFunction: F[A] => B, testValue: F[A]): Boolean = {
-//    // this needs to be the identity function
-//    val id: (F[A] => B) => F[A] => B = adj.rightAdjunct[A, B] compose adj.leftAdjunct[A, B]
-//
-//    testFunction(testValue) == id(testFunction)(testValue)
-//  }
-//}
+class AdjunctionLaws[F[_] : Functor, G[_] : Functor](adj: Adjunction[F, G]) {
+  def leftIdentity[A, B](testFunction: A => G[B], testValue: A): Boolean = {
+    // this needs to be the identity function
+    val id: (A => G[B]) => A => G[B] = adj.leftAdjunct[A, B] _ compose adj.rightAdjunct[A, B]
+
+    testFunction(testValue) == id(testFunction)(testValue)
+  }
+
+  def rightIdentity[A, B](testFunction: F[A] => B, testValue: F[A]): Boolean = {
+    // this needs to be the identity function
+    val id: (F[A] => B) => F[A] => B = adj.rightAdjunct[A, B] _ compose adj.leftAdjunct[A, B]
+
+    testFunction(testValue) == id(testFunction)(testValue)
+  }
+}
 
 object AdjunctionInstances {
 
