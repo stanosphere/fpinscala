@@ -27,12 +27,14 @@ abstract class Adjunction[F[_] : Functor, G[_] : Functor] {
   }
 
   // from an adjunction one can ALWAYS derive a corresponding Monad and CoMonad Pair
-  val monad: Monad[Lambda[x => G[F[x]]]] = new Monad[Lambda[x => G[F[x]]]] {
+  val monad: Monad[M] = new Monad[M] {
     override def pure[A](a: A): M[A] =
       _unit(a)
 
-    override def flatMap[A, B](ma: M[A])(f: A => M[B]): M[B] =
-      Functor[G].map(Functor[M].map(ma)(f))(counit)
+    override def flatMap[A, B](ma: M[A])(f: A => M[B]): M[B] = {
+      val mmb = ma.map(f)
+      Functor[G].map(mmb)(counit)
+    }
 
     // there might be a way to ACTUALLY make this tail recursive using the adjunctions? But I somewhat doubt it
     override def tailRecM[A, B](a: A)(f: A => M[Either[A, B]]): M[B] =
@@ -56,13 +58,15 @@ class AdjunctionLaws[F[_] : Functor, G[_] : Functor](adj: Adjunction[F, G]) {
 
     testFunction(testValue) == id(testFunction)(testValue)
   }
+
+  // TODO write down laws in terms of unit and counit (I imagine this can be done via algebraic manipulation actually)
 }
 
 object AdjunctionInstances {
 
   implicit def writerFunctor[W]: Functor[(*, W)] = new Functor[(*, W)] {
     override def map[A, B](fa: (A, W))(f: A => B): (B, W) = fa match {
-      case (a, r) => (f(a), r)
+      case (a, w) => (f(a), w)
     }
   }
 
@@ -80,6 +84,8 @@ object AdjunctionInstances {
       case (a, r) => f(a)(r)
     }
   }
+
+  type State[S, A] = S => (A, S)
 
   // I would have thought this would simplify to R => (*, R)???
   def stateMonad[S]: Monad[Lambda[x => S => (x, S)]] = writerReaderAdjunction[S].monad
