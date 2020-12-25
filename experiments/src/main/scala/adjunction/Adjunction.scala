@@ -38,6 +38,8 @@ abstract class Adjunction[F[_] : Functor, G[_] : Functor] {
     override def tailRecM[A, B](a: A)(f: A => M[Either[A, B]]): M[B] =
       flatMap(f(a))(_.fold(tailRecM(_)(f), pure))
   }
+
+  // TODO write definition for comonad
 }
 
 class AdjunctionLaws[F[_] : Functor, G[_] : Functor](adj: Adjunction[F, G]) {
@@ -58,8 +60,8 @@ class AdjunctionLaws[F[_] : Functor, G[_] : Functor](adj: Adjunction[F, G]) {
 
 object AdjunctionInstances {
 
-  implicit def writerFunctor[R]: Functor[(*, R)] = new Functor[(*, R)] {
-    override def map[A, B](fa: (A, R))(f: A => B): (B, R) = fa match {
+  implicit def writerFunctor[W]: Functor[(*, W)] = new Functor[(*, W)] {
+    override def map[A, B](fa: (A, W))(f: A => B): (B, W) = fa match {
       case (a, r) => (f(a), r)
     }
   }
@@ -68,19 +70,19 @@ object AdjunctionInstances {
     override def map[A, B](f1: R => A)(f2: A => B): R => B = r => f2(f1(r))
   }
 
-  def writerReaderAdjunction[R]: Adjunction[(*, R), R => *] = new Adjunction[(*, R), R => *] {
+  def writerReaderAdjunction[S]: Adjunction[(*, S), S => *] = new Adjunction[(*, S), S => *] {
     // curry
-    override def leftAdjunct[A, B](f: ((A, R)) => B): A => R => B =
+    override def leftAdjunct[A, B](f: ((A, S)) => B): A => S => B =
       a => r => f((a, r))
 
     // uncurry
-    override def rightAdjunct[A, B](f: A => R => B): ((A, R)) => B = {
+    override def rightAdjunct[A, B](f: A => S => B): ((A, S)) => B = {
       case (a, r) => f(a)(r)
     }
   }
 
   // I would have thought this would simplify to R => (*, R)???
-  def stateMonad[R]: Monad[Lambda[x => R => (x, R)]] = writerReaderAdjunction[R].monad
+  def stateMonad[S]: Monad[Lambda[x => S => (x, S)]] = writerReaderAdjunction[S].monad
 
 }
 
