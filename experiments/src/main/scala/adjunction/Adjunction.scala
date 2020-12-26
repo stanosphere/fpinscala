@@ -3,13 +3,21 @@ package adjunction
 import cats.{Functor, Monad}
 import cats.implicits._
 
+/**
+  * specify one of the following pairs:
+  *
+  * leftAdjunct and rightAdjunct
+  * unit        and counit
+  * leftAdjunct and counit
+  * unit        and rightAdjunct
+  */
 abstract class Adjunction[F[_] : Functor, G[_] : Functor] {
 
-  // TODO write in terms of unit and counit
-  def leftAdjunct[A, B](f: F[A] => B): A => G[B]
+  def leftAdjunct[A, B](f: F[A] => B): A => G[B] =
+    fmap(Functor[G])(f) compose unit[A]
 
-  // TODO write in terms of unit and counit
-  def rightAdjunct[A, B](f: A => G[B]): F[A] => B
+  def rightAdjunct[A, B](f: A => G[B]): F[A] => B =
+    counit[B] _ compose fmap(Functor[F])(f)
 
   def unit[A](a: A): G[F[A]] =
     leftAdjunct(identity[F[A]])(a)
@@ -42,6 +50,12 @@ abstract class Adjunction[F[_] : Functor, G[_] : Functor] {
   }
 
   // TODO write definition for comonad
+
+  private def comp[A, B, C](f1: B => C, f2: A => B): A => C = a => f1(f2(a))
+
+  private def fmap[Fun[_] : Functor, A, B](functor: Functor[Fun])(f: A => B): Fun[A] => Fun[B] =
+    functor.map[A, B](_)(f)
+
 }
 
 class AdjunctionLaws[F[_] : Functor, G[_] : Functor](adj: Adjunction[F, G]) {
@@ -85,10 +99,12 @@ object AdjunctionInstances {
     }
   }
 
-  type State[S, A] = S => (A, S)
+  // TODO can I find a way to prove the equivalence of these types?
+  type State1[S] = S => (a forSome {type a}, S)
+  type State2[S] = S => (*, S)[_]
 
-  // I would have thought this would simplify to R => (*, R)???
-  def stateMonad[S]: Monad[Lambda[x => S => (x, S)]] = writerReaderAdjunction[S].monad
+  // I would have thought this would simplify to S => (*, S)???
+  def stateMonad[S]: Monad[Lambda[a => S => (a, S)]] = writerReaderAdjunction[S].monad
 
 }
 
