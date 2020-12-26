@@ -1,6 +1,6 @@
 package adjunction
 
-import cats.{Functor, Monad}
+import cats.{Comonad, Functor, Monad}
 import cats.implicits._
 
 /**
@@ -14,10 +14,10 @@ import cats.implicits._
 abstract class Adjunction[F[_] : Functor, G[_] : Functor] {
 
   def leftAdjunct[A, B](f: F[A] => B): A => G[B] =
-    fmap(Functor[G])(f) compose unit[A]
+    funMap(Functor[G])(f) compose unit[A]
 
   def rightAdjunct[A, B](f: A => G[B]): F[A] => B =
-    counit[B] _ compose fmap(Functor[F])(f)
+    counit[B] _ compose funMap(Functor[F])(f)
 
   def unit[A](a: A): G[F[A]] =
     leftAdjunct(identity[F[A]])(a)
@@ -26,11 +26,17 @@ abstract class Adjunction[F[_] : Functor, G[_] : Functor] {
     rightAdjunct(identity[G[A]])(fga)
 
   type M[A] = G[F[A]]
+  type C[A] = F[G[A]]
 
   def _unit[A](a: A): G[F[A]] = unit[A](a)
 
-  implicit val functor: Functor[M] = new Functor[M] {
+  implicit val functorM: Functor[M] = new Functor[M] {
     override def map[A, B](gfa: G[F[A]])(f: A => B): G[F[B]] =
+      gfa.map(_.map(f))
+  }
+
+  implicit val functorC: Functor[C] = new Functor[C] {
+    override def map[A, B](gfa: F[G[A]])(f: A => B): F[G[B]] =
       gfa.map(_.map(f))
   }
 
@@ -51,9 +57,22 @@ abstract class Adjunction[F[_] : Functor, G[_] : Functor] {
 
   // TODO write definition for comonad
 
-  private def comp[A, B, C](f1: B => C, f2: A => B): A => C = a => f1(f2(a))
+  val comonad: Comonad[C] = new Comonad[C] {
+    override def extract[A](x: C[A]): A =
+      counit(x)
 
-  private def fmap[Fun[_] : Functor, A, B](functor: Functor[Fun])(f: A => B): Fun[A] => Fun[B] =
+    override def coflatMap[A, B](fga: C[A])(f: C[A] => B): C[B] = {
+      val cca = Functor[F].map(fga)(unit)
+      map(cca)(f)
+    }
+
+    override def map[A, B](fga: F[G[A]])(f: A => B): F[G[B]] =
+      fga.map(_.map(f))
+  }
+
+
+  // TODO either find a cats way of doing this or make a little helper implicit thing
+  private def funMap[Fun[_] : Functor, A, B](functor: Functor[Fun])(f: A => B): Fun[A] => Fun[B] =
     functor.map[A, B](_)(f)
 
 }
@@ -103,8 +122,11 @@ object AdjunctionInstances {
   type State1[S] = S => (a forSome {type a}, S)
   type State2[S] = S => (*, S)[_]
 
-  // I would have thought this would simplify to S => (*, S)???
+  // I would have thought this would simplify to S => (*, S) ???
   def stateMonad[S]: Monad[Lambda[a => S => (a, S)]] = writerReaderAdjunction[S].monad
+
+  // I would have thought this would simplify to (S => *, S) ???
+  def storeCoMonad[S]: Comonad[Lambda[a => (S => a, S)]] = writerReaderAdjunction[S].comonad
 
 }
 
