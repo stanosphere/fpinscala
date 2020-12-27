@@ -26,7 +26,7 @@ abstract class Adjunction[F[_] : Functor, G[_] : Functor] {
     rightAdjunct(identity[G[A]])(fga)
 
   type M[A] = G[F[A]]
-  type C[A] = F[G[A]]
+  type W[A] = F[G[A]] // because it looks like "M" upside down :p
 
   def _unit[A](a: A): G[F[A]] = unit[A](a)
 
@@ -35,7 +35,7 @@ abstract class Adjunction[F[_] : Functor, G[_] : Functor] {
       gfa.map(_.map(f))
   }
 
-  implicit val functorC: Functor[C] = new Functor[C] {
+  implicit val functorC: Functor[W] = new Functor[W] {
     override def map[A, B](gfa: F[G[A]])(f: A => B): F[G[B]] =
       gfa.map(_.map(f))
   }
@@ -57,11 +57,11 @@ abstract class Adjunction[F[_] : Functor, G[_] : Functor] {
 
   // TODO write definition for comonad
 
-  val comonad: Comonad[C] = new Comonad[C] {
-    override def extract[A](x: C[A]): A =
+  val comonad: Comonad[W] = new Comonad[W] {
+    override def extract[A](x: W[A]): A =
       counit(x)
 
-    override def coflatMap[A, B](fga: C[A])(f: C[A] => B): C[B] = {
+    override def coflatMap[A, B](fga: W[A])(f: W[A] => B): W[B] = {
       val cca = Functor[F].map(fga)(unit)
       map(cca)(f)
     }
